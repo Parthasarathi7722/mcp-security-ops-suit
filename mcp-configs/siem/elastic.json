@@ -1,0 +1,40 @@
+{
+  "name": "Elasticsearch",
+  "description": "Search and analytics engine for log analysis and security monitoring",
+  "mcp_package": "@elastic/mcp-server-elasticsearch",
+  "source": "https://www.elastic.co/docs/solutions/search/mcp",
+  "maturity": "Official",
+  "auth_method": "API Key",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@elastic/mcp-server-elasticsearch"],
+    "env": {
+      "ELASTICSEARCH_URL": "${ELASTICSEARCH_URL}",
+      "ELASTICSEARCH_API_KEY": "${ELASTICSEARCH_API_KEY}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "search — Execute Elasticsearch queries",
+      "get_mappings — Retrieve index mappings",
+      "list_indices — List available indices"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Security logs", "Endpoint data", "Network flows", "Audit trails"]
+  },
+
+  "setup_steps": [
+    "1. Create an API key in Kibana → Stack Management → API Keys",
+    "2. Restrict the key to read-only on security indices",
+    "3. Set ELASTICSEARCH_URL (e.g., https://elastic.company.com:9200)",
+    "4. Requires Elasticsearch 9.2+ for Agent Builder MCP"
+  ],
+
+  "security_notes": [
+    "Use index-level permissions — restrict to security indices only",
+    "API keys should be read-only with limited lifetime",
+    "Monitor API key usage via Elasticsearch audit logging"
+  ]
+}

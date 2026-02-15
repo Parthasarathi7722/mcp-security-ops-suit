@@ -1,0 +1,39 @@
+{
+  "name": "Trivy",
+  "description": "Comprehensive security scanner — container images, filesystems, git repos, SBOM generation",
+  "mcp_package": "@aquasecurity/trivy-mcp-server",
+  "source": "https://github.com/aquasecurity/trivy",
+  "maturity": "Official",
+  "auth_method": "None (local scanner)",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@aquasecurity/trivy-mcp-server"],
+    "env": {}
+  },
+
+  "capabilities": {
+    "tools": [
+      "scan_image — Scan a container image for vulnerabilities",
+      "scan_filesystem — Scan local filesystem for vulnerabilities",
+      "generate_sbom — Generate Software Bill of Materials",
+      "scan_repo — Scan a git repository"
+    ],
+    "access_type": "Read-only (scanning)",
+    "data_sources": ["Container registries", "Local filesystem", "Git repos", "Trivy vulnerability DB"]
+  },
+
+  "setup_steps": [
+    "1. Install Trivy: brew install trivy (or apt-get install trivy)",
+    "2. No API key needed — uses local vulnerability database",
+    "3. Database updates automatically on first run",
+    "4. For private registries: configure Docker credentials"
+  ],
+
+  "security_notes": [
+    "Trivy runs entirely locally — no data sent to external services",
+    "Vulnerability DB downloaded once, updated periodically",
+    "Zero cost, zero auth, zero risk — best tool for getting started",
+    "Container scanning requires Docker or registry access"
+  ]
+}

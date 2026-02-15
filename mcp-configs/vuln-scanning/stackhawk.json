@@ -1,0 +1,41 @@
+{
+  "name": "StackHawk",
+  "description": "Dynamic application security testing (DAST) — API and web app vulnerability scanning",
+  "mcp_package": "@stackhawk/mcp-server",
+  "source": "https://www.stackhawk.com/blog/mcp-server-for-security-scanning/",
+  "maturity": "Official",
+  "auth_method": "API Key",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@stackhawk/mcp-server"],
+    "env": {
+      "STACKHAWK_API_KEY": "${STACKHAWK_API_KEY}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_scans — List completed and running scans",
+      "get_scan_results — Get vulnerability findings from a scan",
+      "start_scan — Trigger a new DAST scan",
+      "list_applications — List registered applications"
+    ],
+    "access_type": "Read/Write (scan triggering)",
+    "data_sources": ["DAST scan results", "Application inventory", "Vulnerability findings"]
+  },
+
+  "setup_steps": [
+    "1. Sign up at stackhawk.com",
+    "2. Create API key: Settings → API Keys",
+    "3. Register your application with OpenAPI/Swagger spec",
+    "4. Run initial scan to populate findings"
+  ],
+
+  "security_notes": [
+    "DAST scans make real HTTP requests — only scan applications you own",
+    "Scan triggering via AI should require human approval",
+    "API key has full account access — use a service account",
+    "Schedule scans during off-peak hours to avoid performance impact"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "name": "Microsoft Sentinel",
+  "description": "SIEM and SOAR platform for threat detection, investigation, and response",
+  "mcp_package": "@dstreefkerk/ms-sentinel-mcp-server",
+  "source": "https://github.com/dstreefkerk/ms-sentinel",
+  "maturity": "Official",
+  "auth_method": "Azure AD Service Principal",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@dstreefkerk/ms-sentinel-mcp-server"],
+    "env": {
+      "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+      "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+      "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+      "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}",
+      "SENTINEL_WORKSPACE_ID": "${SENTINEL_WORKSPACE_ID}",
+      "SENTINEL_RESOURCE_GROUP": "${SENTINEL_RESOURCE_GROUP}",
+      "SENTINEL_WORKSPACE_NAME": "${SENTINEL_WORKSPACE_NAME}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "run_kql_query — Execute KQL queries against Log Analytics workspace",
+      "list_incidents — List active Sentinel incidents",
+      "get_incident — Get incident details by ID",
+      "list_analytics_rules — List detection/analytics rules",
+      "update_incident — Update incident status/severity"
+    ],
+    "access_type": "Read/Write",
+    "data_sources": ["SecurityEvent", "SigninLogs", "AuditLogs", "CommonSecurityLog", "Custom tables"]
+  },
+
+  "setup_steps": [
+    "1. Create Azure AD App Registration with the following API permissions:",
+    "   - Microsoft Sentinel Contributor (on the resource group)",
+    "   - Log Analytics Reader (on the workspace)",
+    "2. Generate a client secret for the app registration",
+    "3. Note the Tenant ID, Client ID, Subscription ID, and workspace details",
+    "4. Set environment variables or use Vault to store credentials"
+  ],
+
+  "security_notes": [
+    "Use a dedicated service principal — do not use personal credentials",
+    "Scope permissions to the specific Sentinel workspace, not the subscription",
+    "Rotate client secret every 90 days",
+    "Audit MCP access via Azure AD sign-in logs"
+  ],
+
+  "use_cases": [
+    "Incident investigation — query logs during IR",
+    "Threat hunting — run KQL hunts from natural language",
+    "Detection engineering — review and manage analytics rules",
+    "Alert triage — pull incident details for SOC workflow"
+  ]
+}

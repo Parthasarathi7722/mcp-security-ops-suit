@@ -1,0 +1,42 @@
+{
+  "name": "Vanta",
+  "description": "Trust management platform — SOC 2, ISO 27001, HIPAA compliance automation with AI-native integrations",
+  "mcp_package": "@vanta/mcp-server",
+  "source": "https://www.vanta.com/resources/meet-the-vanta-mcp-server",
+  "maturity": "Official",
+  "auth_method": "OAuth 2.0 / API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@vanta/mcp-server"],
+    "env": {
+      "VANTA_API_TOKEN": "${VANTA_API_TOKEN}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_frameworks — List active compliance frameworks",
+      "get_framework_progress — Get compliance readiness percentage",
+      "list_failing_tests — List tests that are currently failing",
+      "get_remediation — Get remediation guidance for failing tests",
+      "list_evidence — List evidence items and collection status"
+    ],
+    "access_type": "Read/Write (limited write for remediation)",
+    "data_sources": ["Frameworks", "Controls", "Tests", "Evidence", "Integrations"]
+  },
+
+  "setup_steps": [
+    "1. Enable MCP in Vanta settings",
+    "2. Create API token or configure OAuth 2.0 app",
+    "3. Scope: Compliance Reader (or Compliance Admin for remediation actions)",
+    "4. Connect Vanta integrations (AWS, GitHub, etc.) for automated evidence"
+  ],
+
+  "security_notes": [
+    "Vanta supports OAuth 2.0 — preferred over API tokens",
+    "Remediation write access should be carefully scoped",
+    "Compliance data is audit-sensitive — log all MCP access",
+    "Pair with Prowler MCP to cross-reference cloud findings with Vanta controls"
+  ]
+}

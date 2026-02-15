@@ -1,0 +1,45 @@
+{
+  "name": "Jira (Atlassian)",
+  "description": "Project and incident tracking — create tickets, manage sprints, and track security remediation",
+  "mcp_package": "@atlassian/mcp-server-jira",
+  "source": "https://www.atlassian.com/blog/announcements/remote-mcp-server",
+  "maturity": "Official (Atlassian Remote MCP)",
+  "auth_method": "OAuth 2.0 / API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@atlassian/mcp-server-jira"],
+    "env": {
+      "JIRA_URL": "${JIRA_URL}",
+      "JIRA_EMAIL": "${JIRA_EMAIL}",
+      "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "create_issue — Create a new Jira issue",
+      "get_issue — Get issue details",
+      "search_issues — JQL search",
+      "update_issue — Update issue fields",
+      "add_comment — Add a comment to an issue",
+      "transition_issue — Move issue through workflow states"
+    ],
+    "access_type": "Read/Write",
+    "data_sources": ["Issues", "Projects", "Sprints", "Comments", "Attachments"]
+  },
+
+  "setup_steps": [
+    "1. Create API token: id.atlassian.com → Security → API Tokens",
+    "2. Or use Atlassian Remote MCP with OAuth (recommended)",
+    "3. Set JIRA_URL (e.g., https://company.atlassian.net)",
+    "4. Set JIRA_EMAIL to the service account email"
+  ],
+
+  "security_notes": [
+    "Prefer Atlassian Remote MCP (OAuth) over self-hosted with API tokens",
+    "API tokens have full account permissions — use a dedicated service account",
+    "Issue creation via AI should follow your existing ticket templates",
+    "Sensitive security findings in tickets — ensure project permissions are restricted"
+  ]
+}

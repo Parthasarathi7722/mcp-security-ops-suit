@@ -1,0 +1,216 @@
+{
+  "mcpServers": {
+
+    "__comment_siem": "=== SIEM & MONITORING ===",
+
+    "sentinel": {
+      "command": "npx",
+      "args": ["-y", "@dstreefkerk/ms-sentinel-mcp-server"],
+      "env": {
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}",
+        "SENTINEL_WORKSPACE_ID": "${SENTINEL_WORKSPACE_ID}",
+        "SENTINEL_RESOURCE_GROUP": "${SENTINEL_RESOURCE_GROUP}",
+        "SENTINEL_WORKSPACE_NAME": "${SENTINEL_WORKSPACE_NAME}"
+      }
+    },
+
+    "splunk": {
+      "command": "npx",
+      "args": ["-y", "@splunk/mcp-server"],
+      "env": {
+        "SPLUNK_URL": "${SPLUNK_URL}",
+        "SPLUNK_TOKEN": "${SPLUNK_TOKEN}",
+        "SPLUNK_VERIFY_SSL": "true"
+      }
+    },
+
+    "elastic": {
+      "command": "npx",
+      "args": ["-y", "@elastic/mcp-server-elasticsearch"],
+      "env": {
+        "ELASTICSEARCH_URL": "${ELASTICSEARCH_URL}",
+        "ELASTICSEARCH_API_KEY": "${ELASTICSEARCH_API_KEY}"
+      }
+    },
+
+    "datadog": {
+      "command": "npx",
+      "args": ["-y", "@shelfio/datadog-mcp"],
+      "env": {
+        "DD_API_KEY": "${DD_API_KEY}",
+        "DD_APP_KEY": "${DD_APP_KEY}",
+        "DD_SITE": "datadoghq.com"
+      }
+    },
+
+    "__comment_vuln": "=== VULNERABILITY SCANNING ===",
+
+    "semgrep": {
+      "command": "uvx",
+      "args": ["semgrep-mcp"],
+      "env": {
+        "SEMGREP_APP_TOKEN": "${SEMGREP_APP_TOKEN}"
+      }
+    },
+
+    "snyk": {
+      "command": "npx",
+      "args": ["-y", "@snyk/mcp-server"],
+      "env": {
+        "SNYK_TOKEN": "${SNYK_TOKEN}",
+        "SNYK_ORG_ID": "${SNYK_ORG_ID}"
+      }
+    },
+
+    "trivy": {
+      "command": "npx",
+      "args": ["-y", "@aquasecurity/trivy-mcp-server"],
+      "env": {}
+    },
+
+    "ghas": {
+      "command": "npx",
+      "args": ["-y", "@rajbos/ghas-mcp-server"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "GITHUB_OWNER": "${GITHUB_OWNER}"
+      }
+    },
+
+    "stackhawk": {
+      "command": "npx",
+      "args": ["-y", "@stackhawk/mcp-server"],
+      "env": {
+        "STACKHAWK_API_KEY": "${STACKHAWK_API_KEY}"
+      }
+    },
+
+    "__comment_ti": "=== THREAT INTELLIGENCE ===",
+
+    "greynoise": {
+      "command": "uvx",
+      "args": ["greynoise-mcp"],
+      "env": {
+        "GREYNOISE_API_KEY": "${GREYNOISE_API_KEY}"
+      }
+    },
+
+    "opencti": {
+      "command": "npx",
+      "args": ["-y", "@spathodea-network/opencti-mcp-server"],
+      "env": {
+        "OPENCTI_URL": "${OPENCTI_URL}",
+        "OPENCTI_TOKEN": "${OPENCTI_TOKEN}"
+      }
+    },
+
+    "virustotal": {
+      "command": "npx",
+      "args": ["-y", "virustotal-mcp-server"],
+      "env": {
+        "VT_API_KEY": "${VT_API_KEY}"
+      }
+    },
+
+    "__comment_cloud": "=== CLOUD SECURITY ===",
+
+    "prowler": {
+      "command": "uvx",
+      "args": ["prowler-mcp"],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}",
+        "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}",
+        "AWS_DEFAULT_REGION": "${AWS_DEFAULT_REGION}"
+      }
+    },
+
+    "cloudflare": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "${CLOUDFLARE_API_TOKEN}",
+        "CLOUDFLARE_ACCOUNT_ID": "${CLOUDFLARE_ACCOUNT_ID}"
+      }
+    },
+
+    "__comment_secrets": "=== SECRETS & IDENTITY ===",
+
+    "vault": {
+      "command": "npx",
+      "args": ["-y", "@hashicorp/vault-mcp-server"],
+      "env": {
+        "VAULT_ADDR": "${VAULT_ADDR}",
+        "VAULT_TOKEN": "${VAULT_TOKEN}"
+      }
+    },
+
+    "vault-radar": {
+      "command": "npx",
+      "args": ["-y", "@hashicorp/vault-radar-mcp-server"],
+      "env": {
+        "HCP_CLIENT_ID": "${HCP_CLIENT_ID}",
+        "HCP_CLIENT_SECRET": "${HCP_CLIENT_SECRET}",
+        "HCP_PROJECT_ID": "${HCP_PROJECT_ID}"
+      }
+    },
+
+    "okta": {
+      "command": "npx",
+      "args": ["-y", "@okta/mcp-server"],
+      "env": {
+        "OKTA_ORG_URL": "${OKTA_ORG_URL}",
+        "OKTA_API_TOKEN": "${OKTA_API_TOKEN}"
+      }
+    },
+
+    "__comment_compliance": "=== COMPLIANCE ===",
+
+    "drata": {
+      "command": "npx",
+      "args": ["-y", "@drata/mcp-server"],
+      "env": {
+        "DRATA_API_KEY": "${DRATA_API_KEY}"
+      }
+    },
+
+    "vanta": {
+      "command": "npx",
+      "args": ["-y", "@vanta/mcp-server"],
+      "env": {
+        "VANTA_API_TOKEN": "${VANTA_API_TOKEN}"
+      }
+    },
+
+    "__comment_detection": "=== DETECTION ENGINEERING ===",
+
+    "security-detections": {
+      "command": "npx",
+      "args": ["-y", "@mhaggis/security-detections-mcp"],
+      "env": {}
+    },
+
+    "__comment_ticketing": "=== TICKETING & NOTIFICATIONS ===",
+
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@atlassian/mcp-server-jira"],
+      "env": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_EMAIL": "${JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      }
+    },
+
+    "slack": {
+      "command": "npx",
+      "args": ["-y", "@slack/mcp-server"],
+      "env": {
+        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+        "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
+      }
+    }
+  }
+}

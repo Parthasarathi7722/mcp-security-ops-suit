@@ -1,0 +1,42 @@
+{
+  "name": "Snyk",
+  "description": "Developer security platform — SCA, container, IaC scanning with reachability analysis",
+  "mcp_package": "@snyk/mcp-server",
+  "source": "https://snyk.io",
+  "maturity": "Official",
+  "auth_method": "API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@snyk/mcp-server"],
+    "env": {
+      "SNYK_TOKEN": "${SNYK_TOKEN}",
+      "SNYK_ORG_ID": "${SNYK_ORG_ID}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "test_project — Test a project for vulnerabilities",
+      "list_issues — List open vulnerability issues",
+      "get_issue — Get issue details including fix guidance",
+      "list_projects — List projects in an org"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Open source dependencies", "Container images", "IaC templates", "Code"]
+  },
+
+  "setup_steps": [
+    "1. Create API token: app.snyk.io → Settings → General → API Token",
+    "2. Find your org ID: Settings → General → Organization ID",
+    "3. Free tier supports up to 200 tests/month",
+    "4. Enterprise tier adds reachability analysis and priority scoring"
+  ],
+
+  "security_notes": [
+    "API token is scoped to the user — use a service account",
+    "Read-only access is sufficient for MCP use cases",
+    "Snyk sends dependency manifests to cloud for analysis (not source code)",
+    "Reachability analysis (Enterprise) is the key differentiator for AI triage"
+  ]
+}

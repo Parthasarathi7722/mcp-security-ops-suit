@@ -1,0 +1,50 @@
+{
+  "name": "GreyNoise",
+  "description": "Internet-wide scanner and threat intelligence — IP reputation, mass exploitation detection, and vulnerability intel",
+  "mcp_package": "greynoise-mcp",
+  "source": "https://github.com/GreyNoise-Intelligence/greynoise-mcp-server",
+  "maturity": "Official",
+  "auth_method": "API Key",
+
+  "config": {
+    "command": "uvx",
+    "args": ["greynoise-mcp"],
+    "env": {
+      "GREYNOISE_API_KEY": "${GREYNOISE_API_KEY}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "ip_lookup — Check IP reputation and classification",
+      "ip_context — Full context including tags, CVEs, OS, ports",
+      "riot_check — Check if IP belongs to known business service (CDN, cloud, etc.)",
+      "stats — Aggregate statistics via GNQL",
+      "cve_lookup — Check vulnerability exploitation activity"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Internet scan data", "IP reputation", "CVE exploitation data", "RIOT database"]
+  },
+
+  "setup_steps": [
+    "1. Sign up at viz.greynoise.io",
+    "2. Community tier: Free — limited queries/day",
+    "3. Enterprise tier: Full API access, bulk queries, GNQL",
+    "4. Get API key from Account Settings → API Key",
+    "5. Install: pip install greynoise (or use uvx for MCP)"
+  ],
+
+  "security_notes": [
+    "GreyNoise is read-only — no risk of accidental modifications",
+    "Community API has rate limits — plan queries accordingly",
+    "API key is low-risk (read-only threat intel) but still store securely",
+    "GNQL queries can be complex — validate AI-generated queries before trusting results"
+  ],
+
+  "use_cases": [
+    "Incident response — is this attacking IP a known mass scanner or targeted?",
+    "Alert triage — reduce false positives by filtering known-benign scanners",
+    "Threat hunting — find IPs scanning for specific CVEs",
+    "Vulnerability prioritisation — is this CVE being actively exploited at scale?"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "Cloudflare",
+  "description": "Edge security platform — WAF, Zero Trust, DDoS protection, and AI firewall",
+  "mcp_package": "@cloudflare/mcp-server",
+  "source": "https://blog.cloudflare.com/zero-trust-mcp-server-portals/",
+  "maturity": "Official",
+  "auth_method": "OAuth / API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@cloudflare/mcp-server"],
+    "env": {
+      "CLOUDFLARE_API_TOKEN": "${CLOUDFLARE_API_TOKEN}",
+      "CLOUDFLARE_ACCOUNT_ID": "${CLOUDFLARE_ACCOUNT_ID}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_waf_events — List WAF blocked/challenged requests",
+      "get_firewall_rules — List active firewall rules",
+      "create_firewall_rule — Add new firewall/WAF rule",
+      "list_zones — List managed domains",
+      "get_analytics — Zone traffic and security analytics"
+    ],
+    "access_type": "Read/Write (WAF management)",
+    "data_sources": ["WAF events", "Firewall rules", "Zone analytics", "Zero Trust logs"]
+  },
+
+  "setup_steps": [
+    "1. Create API token at dash.cloudflare.com → Profile → API Tokens",
+    "2. Permissions: Zone:Firewall Services:Read, Zone:Analytics:Read",
+    "3. For WAF write access: Zone:Firewall Services:Edit",
+    "4. Restrict token to specific zones (not account-wide)",
+    "5. For Zero Trust MCP Portals: Configure via Access dashboard"
+  ],
+
+  "security_notes": [
+    "WAF write access is powerful — use with human-in-the-loop approval",
+    "Token should be scoped to specific zones, not account-wide",
+    "Cloudflare MCP Portals add Zero Trust auth layer for MCP servers",
+    "AI Firewall can detect prompt injection targeting MCP servers"
+  ]
+}

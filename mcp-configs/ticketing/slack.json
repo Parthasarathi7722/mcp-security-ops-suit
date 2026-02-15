@@ -1,0 +1,44 @@
+{
+  "name": "Slack",
+  "description": "Team communication — post alerts, incident updates, and security notifications to channels",
+  "mcp_package": "@slack/mcp-server",
+  "source": "Community / Official SDK",
+  "maturity": "Official SDK, Community MCP",
+  "auth_method": "Bot Token (xoxb-)",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@slack/mcp-server"],
+    "env": {
+      "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+      "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "post_message — Post a message to a channel",
+      "reply_thread — Reply to an existing thread",
+      "list_channels — List available channels",
+      "upload_file — Upload a file/report to a channel"
+    ],
+    "access_type": "Read/Write (message posting)",
+    "data_sources": ["Channels", "Threads", "Messages"]
+  },
+
+  "setup_steps": [
+    "1. Create a Slack App at api.slack.com/apps",
+    "2. Add Bot Token Scopes: chat:write, channels:read, files:write",
+    "3. Install app to workspace",
+    "4. Copy Bot User OAuth Token (xoxb-...)",
+    "5. Invite bot to relevant channels: /invite @security-bot"
+  ],
+
+  "security_notes": [
+    "Bot should only have access to security-relevant channels",
+    "Use channel-specific posting — never post to #general",
+    "Message content may contain sensitive findings — restrict channel membership",
+    "AI-generated messages should be clearly labelled as AI-generated",
+    "Implement message approval for high-severity posts before sending"
+  ]
+}

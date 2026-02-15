@@ -1,0 +1,8 @@
+.env
+.env.backup
+.env.local
+*.secret
+*.key
+*.pem
+node_modules/
+.DS_Store

@@ -1,0 +1,42 @@
+{
+  "name": "Drata",
+  "description": "Compliance automation platform — SOC 2, ISO 27001, HIPAA, PCI-DSS, GDPR framework management",
+  "mcp_package": "@drata/mcp-server",
+  "source": "https://drata.com/blog/drata-mcp-built-for-ai-native-trust-management",
+  "maturity": "Experimental (Drata-hosted)",
+  "auth_method": "API Key",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@drata/mcp-server"],
+    "env": {
+      "DRATA_API_KEY": "${DRATA_API_KEY}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_controls — List compliance controls and their status",
+      "get_control — Get control details and evidence",
+      "list_tests — List automated compliance tests",
+      "get_test_results — Get test pass/fail results",
+      "get_framework_status — Overall framework compliance percentage"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Controls", "Tests", "Evidence", "Frameworks", "Risk register"]
+  },
+
+  "setup_steps": [
+    "1. Request MCP access from Drata support (currently experimental)",
+    "2. Generate API key in Drata → Settings → API",
+    "3. Drata hosts the MCP server — no self-hosting required",
+    "4. Hardened environment with built-in guardrails"
+  ],
+
+  "security_notes": [
+    "Drata-hosted MCP server — you don't manage the infrastructure",
+    "Read-only by default — cannot modify compliance controls via MCP",
+    "API key should be scoped to compliance reader role",
+    "Compliance data is sensitive — audit who has MCP access"
+  ]
+}

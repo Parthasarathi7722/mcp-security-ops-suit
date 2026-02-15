@@ -1,0 +1,45 @@
+{
+  "name": "Okta",
+  "description": "Identity and access management — user provisioning, group management, session control, and access reviews",
+  "mcp_package": "@okta/mcp-server",
+  "source": "https://developer.okta.com/blog/2025/09/22/okta-mcp-server",
+  "maturity": "Official",
+  "auth_method": "OAuth 2.0 / API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@okta/mcp-server"],
+    "env": {
+      "OKTA_ORG_URL": "${OKTA_ORG_URL}",
+      "OKTA_API_TOKEN": "${OKTA_API_TOKEN}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_users — List and search users",
+      "get_user — Get user details, MFA status, groups",
+      "list_user_sessions — List active sessions for a user",
+      "revoke_sessions — Force logout all sessions for a user",
+      "list_groups — List groups and memberships",
+      "suspend_user — Suspend a user account"
+    ],
+    "access_type": "Read/Write (scoped by token permissions)",
+    "data_sources": ["Users", "Groups", "Sessions", "Logs", "Policies"]
+  },
+
+  "setup_steps": [
+    "1. Create a dedicated service account in Okta",
+    "2. Generate API token: Security → API → Tokens → Create Token",
+    "3. Or use OAuth 2.0 for better security (recommended)",
+    "4. Set OKTA_ORG_URL (e.g., https://company.okta.com)"
+  ],
+
+  "security_notes": [
+    "API tokens inherit the permissions of the admin who creates them — use a least-privilege admin",
+    "Write operations (revoke sessions, suspend user) should require human approval",
+    "Token cannot be scoped to specific actions — use OAuth 2.0 for granular control",
+    "All Okta API calls appear in System Log — monitor for anomalies",
+    "Prefer OAuth 2.0 over API tokens for production MCP access"
+  ]
+}

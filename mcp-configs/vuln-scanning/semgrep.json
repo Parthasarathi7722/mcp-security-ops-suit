@@ -1,0 +1,39 @@
+{
+  "name": "Semgrep",
+  "description": "Static analysis tool for finding security vulnerabilities across 30+ languages with 5000+ rules",
+  "mcp_package": "semgrep-mcp",
+  "source": "https://github.com/semgrep/mcp",
+  "maturity": "Official",
+  "auth_method": "API Token (optional for OSS rules)",
+
+  "config": {
+    "command": "uvx",
+    "args": ["semgrep-mcp"],
+    "env": {
+      "SEMGREP_APP_TOKEN": "${SEMGREP_APP_TOKEN}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "scan — Run Semgrep scan on code/repository",
+      "list_rules — List available detection rules",
+      "get_findings — Retrieve scan findings"
+    ],
+    "access_type": "Read-only (scanning)",
+    "data_sources": ["Source code", "Semgrep registry rules", "Custom rules"]
+  },
+
+  "setup_steps": [
+    "1. Install: pip install semgrep (or use uvx for MCP)",
+    "2. For Semgrep Cloud: Create API token at semgrep.dev/settings/tokens",
+    "3. For OSS: No token needed — community rules available without auth",
+    "4. Set SEMGREP_APP_TOKEN for cloud platform features"
+  ],
+
+  "security_notes": [
+    "Semgrep runs locally — code never leaves your machine (OSS mode)",
+    "Cloud token only needed for Semgrep Platform features (policies, dashboards)",
+    "Token scopes: read-only on findings is sufficient for MCP use"
+  ]
+}

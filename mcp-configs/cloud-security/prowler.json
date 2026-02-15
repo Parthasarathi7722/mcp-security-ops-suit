@@ -1,0 +1,45 @@
+{
+  "name": "Prowler",
+  "description": "Open-source cloud security scanner — CIS, SOC 2, PCI-DSS, HIPAA compliance checks for AWS, Azure, GCP",
+  "mcp_package": "prowler-mcp",
+  "source": "https://prowler.com/",
+  "maturity": "Official",
+  "auth_method": "Cloud provider credentials (AWS IAM, Azure AD, GCP SA)",
+
+  "config": {
+    "command": "uvx",
+    "args": ["prowler-mcp"],
+    "env": {
+      "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}",
+      "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}",
+      "AWS_DEFAULT_REGION": "${AWS_DEFAULT_REGION}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "run_checks — Execute security checks against cloud environment",
+      "list_checks — List available checks by framework",
+      "get_findings — Retrieve scan results",
+      "get_remediation — Get remediation guidance for findings"
+    ],
+    "access_type": "Read-only (scanning)",
+    "data_sources": ["AWS APIs", "Azure APIs", "GCP APIs"],
+    "frameworks": ["CIS Benchmark", "SOC 2", "PCI-DSS", "HIPAA", "GDPR", "NIST 800-53"]
+  },
+
+  "setup_steps": [
+    "1. Create a dedicated IAM role/user with SecurityAudit policy",
+    "2. For cross-account: Use AssumeRole with external ID",
+    "3. Install: pip install prowler (or use uvx for MCP)",
+    "4. Test access: prowler aws --list-checks",
+    "5. For Azure/GCP: Configure respective service principals"
+  ],
+
+  "security_notes": [
+    "Use SecurityAudit managed policy — minimum permissions for scanning",
+    "Never use root/admin credentials for Prowler",
+    "Prowler reads config but never modifies infrastructure",
+    "Scan results may contain sensitive resource names — handle appropriately"
+  ]
+}

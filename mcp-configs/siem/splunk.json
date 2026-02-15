@@ -1,0 +1,43 @@
+{
+  "name": "Splunk",
+  "description": "SIEM platform for log analysis, threat detection, and incident response",
+  "mcp_package": "@splunk/mcp-server",
+  "source": "https://www.splunk.com/en_us/blog/security/securing-ai-agents-model-context-protocol.html",
+  "maturity": "Official",
+  "auth_method": "API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@splunk/mcp-server"],
+    "env": {
+      "SPLUNK_URL": "${SPLUNK_URL}",
+      "SPLUNK_TOKEN": "${SPLUNK_TOKEN}",
+      "SPLUNK_VERIFY_SSL": "true"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "run_spl_query — Execute SPL search queries",
+      "list_saved_searches — List saved searches and reports",
+      "get_notable_events — Retrieve ES notable events",
+      "list_data_models — List available data models"
+    ],
+    "access_type": "Read-only (recommended)",
+    "data_sources": ["All indexed data", "Saved searches", "Data models", "Notable events"]
+  },
+
+  "setup_steps": [
+    "1. Create a Splunk API token with search capabilities",
+    "2. Restrict the token to specific indexes (do not grant all-index access)",
+    "3. Set SPLUNK_URL to your Splunk instance (e.g., https://splunk.company.com:8089)",
+    "4. Store token in Vault or environment variable"
+  ],
+
+  "security_notes": [
+    "Use a read-only token — MCP should not modify Splunk configs",
+    "Restrict token to security-relevant indexes only",
+    "Set search time limits to prevent resource exhaustion",
+    "Audit token usage via Splunk's internal audit logs"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "OpenCTI",
+  "description": "Open-source cyber threat intelligence platform — threat actors, IOCs, MITRE ATT&CK mappings, and campaign tracking",
+  "mcp_package": "@spathodea-network/opencti-mcp-server",
+  "source": "https://github.com/spathodea-network/opencti-mcp-server",
+  "maturity": "Community",
+  "auth_method": "API Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@spathodea-network/opencti-mcp-server"],
+    "env": {
+      "OPENCTI_URL": "${OPENCTI_URL}",
+      "OPENCTI_TOKEN": "${OPENCTI_TOKEN}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "search_indicators — Search IOCs (IPs, domains, hashes, URLs)",
+      "get_threat_actor — Get threat actor details and TTPs",
+      "search_malware — Search malware families and samples",
+      "get_vulnerability — Get vulnerability details and context",
+      "search_reports — Search threat intelligence reports"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["STIX/TAXII feeds", "MITRE ATT&CK", "Custom intel", "OSINT feeds"]
+  },
+
+  "setup_steps": [
+    "1. Deploy OpenCTI (Docker Compose recommended): https://docs.opencti.io",
+    "2. Configure connectors for threat feeds (AlienVault OTX, MITRE, etc.)",
+    "3. Create API token: Settings → Users → Create token",
+    "4. Set OPENCTI_URL to your instance (e.g., https://opencti.company.com)",
+    "5. Ensure connectors are syncing data before using MCP"
+  ],
+
+  "security_notes": [
+    "Self-hosted — all data stays on your infrastructure",
+    "API token should have Analyst role (read-only)",
+    "OpenCTI can contain sensitive intelligence — restrict MCP access appropriately",
+    "Verify connector data quality — garbage in = garbage out for AI analysis"
+  ]
+}

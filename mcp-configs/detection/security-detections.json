@@ -1,0 +1,47 @@
+{
+  "name": "Security Detections",
+  "description": "Aggregated detection rule database — Sigma, Splunk ESCU, Elastic, KQL rules with MITRE ATT&CK mappings",
+  "mcp_package": "@mhaggis/security-detections-mcp",
+  "source": "https://github.com/MHaggis/Security-Detections-MCP",
+  "maturity": "Community",
+  "auth_method": "None (local database)",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@mhaggis/security-detections-mcp"],
+    "env": {}
+  },
+
+  "capabilities": {
+    "tools": [
+      "search_rules — Search detection rules by keyword or MITRE technique",
+      "get_rule — Get full rule details (logic, references, severity)",
+      "list_by_technique — List rules for a specific ATT&CK technique",
+      "list_by_cve — List rules that detect exploitation of a CVE",
+      "translate_rule — Translate Sigma rule to target SIEM format"
+    ],
+    "access_type": "Read-only (local database)",
+    "data_sources": ["Sigma rules", "Splunk ESCU", "Elastic detection rules", "KQL analytics"]
+  },
+
+  "setup_steps": [
+    "1. Install: npx -y @mhaggis/security-detections-mcp",
+    "2. No auth required — rules are pulled from public repositories",
+    "3. Database updates on each startup (or periodically)",
+    "4. No network access needed after initial download"
+  ],
+
+  "security_notes": [
+    "Completely offline after initial setup — no API keys, no external calls",
+    "Rules are from public sources (Sigma, ESCU, Elastic)",
+    "Zero risk surface — read-only local database",
+    "Perfect starting MCP for security teams evaluating MCP adoption"
+  ],
+
+  "use_cases": [
+    "Threat hunting — find Sigma rules for a TTP, translate to your SIEM's query language",
+    "Detection engineering — discover coverage gaps by MITRE technique",
+    "CVE response — find existing detection rules for newly disclosed CVEs",
+    "Knowledge base — AI can explain detection logic and suggest improvements"
+  ]
+}

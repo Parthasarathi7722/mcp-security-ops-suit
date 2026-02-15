@@ -1,0 +1,41 @@
+{
+  "name": "VirusTotal",
+  "description": "File, URL, domain, and IP analysis service — malware detection and threat intelligence",
+  "mcp_package": "virustotal-mcp-server",
+  "source": "Community implementation",
+  "maturity": "Community",
+  "auth_method": "API Key",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "virustotal-mcp-server"],
+    "env": {
+      "VT_API_KEY": "${VT_API_KEY}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "analyze_hash — Look up file hash (MD5/SHA1/SHA256)",
+      "analyze_url — Check URL reputation",
+      "analyze_domain — Check domain reputation",
+      "analyze_ip — Check IP address reputation"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["70+ antivirus engines", "URL scanners", "Domain/IP reputation"]
+  },
+
+  "setup_steps": [
+    "1. Sign up at virustotal.com",
+    "2. Free tier: 4 requests/minute, 500 requests/day",
+    "3. Premium tier: Higher limits, hunting rules, retrohunt",
+    "4. Get API key from Profile → API Key"
+  ],
+
+  "security_notes": [
+    "Free tier has strict rate limits — cache results where possible",
+    "Files submitted to VT are shared with the community (do not submit sensitive files)",
+    "Hash lookups are safe — they don't upload anything",
+    "URL scans may trigger the URL to be visited by VT scanners"
+  ]
+}

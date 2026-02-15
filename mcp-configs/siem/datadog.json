@@ -1,0 +1,42 @@
+{
+  "name": "Datadog",
+  "description": "Observability platform for metrics, logs, traces, and incident management",
+  "mcp_package": "@shelfio/datadog-mcp",
+  "source": "https://docs.datadoghq.com/bits_ai/mcp_server/",
+  "maturity": "Official",
+  "auth_method": "API Key + Application Key",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@shelfio/datadog-mcp"],
+    "env": {
+      "DD_API_KEY": "${DD_API_KEY}",
+      "DD_APP_KEY": "${DD_APP_KEY}",
+      "DD_SITE": "datadoghq.com"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "query_metrics — Query time-series metrics",
+      "search_logs — Search and filter log data",
+      "list_incidents — List active incidents",
+      "get_dashboard — Retrieve dashboard data"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Metrics", "Logs", "Traces", "Incidents", "Dashboards"]
+  },
+
+  "setup_steps": [
+    "1. Create API key in Datadog → Organization Settings → API Keys",
+    "2. Create Application key with read-only scopes",
+    "3. Set DD_SITE based on your region (datadoghq.com, datadoghq.eu, etc.)",
+    "4. Store keys in Vault or environment variables"
+  ],
+
+  "security_notes": [
+    "Application keys inherit the permissions of the creating user — use a service account",
+    "Scope application key to read-only operations",
+    "Rotate keys every 90 days"
+  ]
+}

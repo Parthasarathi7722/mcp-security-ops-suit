@@ -1,0 +1,42 @@
+{
+  "name": "GitHub Advanced Security (GHAS)",
+  "description": "GitHub's native security suite — Dependabot, CodeQL code scanning, and secret scanning alerts",
+  "mcp_package": "@rajbos/ghas-mcp-server",
+  "source": "https://github.com/rajbos/ghas-mcp-server",
+  "maturity": "Community (official GHAS backing)",
+  "auth_method": "GitHub Personal Access Token",
+
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@rajbos/ghas-mcp-server"],
+    "env": {
+      "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+      "GITHUB_OWNER": "${GITHUB_OWNER}"
+    }
+  },
+
+  "capabilities": {
+    "tools": [
+      "list_dependabot_alerts — List Dependabot vulnerability alerts",
+      "list_code_scanning_alerts — List CodeQL/SARIF findings",
+      "list_secret_scanning_alerts — List detected secrets",
+      "get_alert_details — Get detailed alert information"
+    ],
+    "access_type": "Read-only",
+    "data_sources": ["Dependabot alerts", "CodeQL findings", "Secret scanning alerts"]
+  },
+
+  "setup_steps": [
+    "1. Create a GitHub PAT (classic) with scopes: security_events, repo",
+    "2. Or use a fine-grained PAT with: Dependabot alerts (read), Code scanning alerts (read), Secret scanning alerts (read)",
+    "3. Set GITHUB_OWNER to your org name",
+    "4. GHAS must be enabled on the target repositories"
+  ],
+
+  "security_notes": [
+    "Use fine-grained PATs scoped to specific repos where possible",
+    "Read-only access is sufficient — no write permissions needed",
+    "PAT expiry: set to 90 days maximum",
+    "Do not use a PAT with admin:org scope"
+  ]
+}
