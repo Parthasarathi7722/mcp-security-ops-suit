@@ -178,9 +178,12 @@
     <span id="ws-text">connecting</span>
   </div>
 
-  <!-- Setup -->
-  <button onclick="openOnboarding()" class="btn-ghost" style="padding:5px 12px; font-size:0.78rem;">
-    ⚙ Setup
+  <!-- Setup buttons -->
+  <button onclick="openLLMSetup()" class="btn-ghost" style="padding:5px 12px; font-size:0.78rem;" title="Configure AI engine (Anthropic or local LLM)">
+    ⚙ AI Engine
+  </button>
+  <button onclick="openOnboarding()" class="btn-ghost" style="padding:5px 12px; font-size:0.78rem;" title="Configure MCP security tool credentials">
+    🔌 MCP Tools
   </button>
 
   <!-- New Chat -->
@@ -223,8 +226,11 @@
       <button onclick="clearHistory()" class="sb-item">
         <span style="color:#f59e0b;">↺</span> Clear History
       </button>
+      <button onclick="openLLMSetup()" class="sb-item">
+        <span style="color:#10b981;">⚙</span> AI Engine Setup
+      </button>
       <button onclick="openOnboarding()" class="sb-item">
-        <span style="color:#8b5cf6;">⚙</span> Tool Onboarding
+        <span style="color:#8b5cf6;">🔌</span> MCP Tool Setup
       </button>
     </div>
 
@@ -305,10 +311,15 @@
                   onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1f2937'">
             Threat hunt
           </button>
+          <button onclick="openLLMSetup()"
+                  style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
+                  onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#1f2937'">
+            ⚙ AI Engine
+          </button>
           <button onclick="openOnboarding()"
                   style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
                   onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='#1f2937'">
-            ⚙ Set up tools
+            🔌 MCP Tools
           </button>
         </div>
       </div>
@@ -391,7 +402,38 @@
 </div>
 
 
-<!-- ══ MODAL: ONBOARDING WIZARD ════════════════════════════════════════════ -->
+<!-- ══ MODAL: LLM SETUP ══════════════════════════════════════════════════════ -->
+<div id="modal-llm-setup" class="modal-backdrop" style="display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; overflow-y:auto; padding:16px;">
+  <div class="fade-in" style="background:#111827; border:1px solid #1f2937; border-radius:14px; width:100%; max-width:560px; margin:auto; overflow:hidden;">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid #1f2937;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+      </svg>
+      <span style="font-weight:600; font-size:0.95rem;">AI Engine Setup</span>
+      <div style="flex:1;"></div>
+      <div id="llm-setup-dots" style="display:flex; gap:5px; align-items:center;"></div>
+      <button onclick="closeModal('modal-llm-setup')" style="background:none; border:none; color:#6b7280; cursor:pointer; font-size:1.1rem; padding:2px 6px;" onmouseover="this.style.color='#e5e7eb'" onmouseout="this.style.color='#6b7280'">✕</button>
+    </div>
+
+    <!-- Content -->
+    <div id="llm-setup-content" style="padding:24px; min-height:280px;"></div>
+
+    <!-- Navigation -->
+    <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-top:1px solid #1f2937;">
+      <button id="llm-back-btn" onclick="llmBack()" class="btn-ghost" style="display:none;">← Back</button>
+      <div style="flex:1;"></div>
+      <button onclick="closeModal('modal-llm-setup')" class="btn-ghost">Cancel</button>
+      <button id="llm-next-btn" onclick="llmNext()" class="btn-primary">Next →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ MODAL: MCP TOOL ONBOARDING ══════════════════════════════════════════ -->
 <div id="modal-onboard" class="modal-backdrop" style="display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; overflow-y:auto; padding:16px;">
   <div class="fade-in" style="background:#111827; border:1px solid #1f2937; border-radius:14px; width:100%; max-width:580px; margin:auto; overflow:hidden;">
 
@@ -400,7 +442,7 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
         <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
       </svg>
-      <span style="font-weight:600; font-size:0.95rem;">SOCPilot Setup Wizard</span>
+      <span style="font-weight:600; font-size:0.95rem;">MCP Tool Setup</span>
       <div style="flex:1;"></div>
       <!-- Step dots -->
       <div id="onboard-dots" style="display:flex; gap:5px; align-items:center;"></div>
@@ -825,16 +867,301 @@ function buildWelcomeScreen() {
       <button onclick="launchPlaybook('threat-hunting')"
         style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
         onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1f2937'">Threat hunt</button>
+      <button onclick="openLLMSetup()"
+        style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
+        onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#1f2937'">⚙ AI Engine</button>
       <button onclick="openOnboarding()"
         style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
-        onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='#1f2937'">⚙ Set up tools</button>
+        onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='#1f2937'">🔌 MCP Tools</button>
     </div>
   `;
   return el;
 }
 
 
-// ─── Onboarding wizard ────────────────────────────────────────────────────────
+// ─── LLM Setup Wizard ─────────────────────────────────────────────────────────
+let llmStepIdx = 0;
+const llmSteps = ['provider', 'credentials', 'summary'];
+let llmData    = { provider: 'anthropic', values: {} };
+
+async function openLLMSetup() {
+  llmStepIdx = 0;
+  llmData    = { provider: 'anthropic', values: {} };
+  // Pre-populate from current health status
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    llmData.provider          = d.provider   || 'anthropic';
+    llmData.values['AI_MODEL']    = d.model    || '';
+    llmData.values['AI_BASE_URL'] = d.base_url || '';
+  } catch {}
+  renderLLMStep();
+  showModal('modal-llm-setup');
+}
+
+function renderLLMStep() {
+  const step    = llmSteps[llmStepIdx];
+  const content = qs('#llm-setup-content');
+  const backBtn = qs('#llm-back-btn');
+  const nextBtn = qs('#llm-next-btn');
+  if (!content) return;
+  backBtn.style.display = llmStepIdx === 0 ? 'none' : 'inline-block';
+  updateLLMDots();
+
+  if (step === 'provider') {
+    nextBtn.textContent = 'Next →';
+    const sel = llmData.provider || 'anthropic';
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Choose AI Provider</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;">
+        SOCPilot uses an LLM to reason over security tools and generate findings.
+        Choose cloud or fully local.
+      </p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+        <label class="llm-provider-card" data-val="anthropic"
+          style="display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:10px; border:2px solid ${sel==='anthropic'?'#10b981':'#1f2937'}; cursor:pointer; background:#0d1421; transition:border-color 0.15s;">
+          <input type="radio" name="llm-provider" value="anthropic" ${sel==='anthropic'?'checked':''} style="display:none;">
+          <div style="font-size:1.3rem;">☁</div>
+          <div style="font-weight:600; font-size:0.88rem;">Anthropic API</div>
+          <div style="font-size:0.75rem; color:#6b7280; line-height:1.5;">Claude cloud models. Best reasoning and tool-calling accuracy.</div>
+          <div style="font-size:0.72rem; color:#10b981; margin-top:2px;">✓ Best accuracy · Extended thinking</div>
+        </label>
+        <label class="llm-provider-card" data-val="openai"
+          style="display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:10px; border:2px solid ${sel==='openai'?'#10b981':'#1f2937'}; cursor:pointer; background:#0d1421; transition:border-color 0.15s;">
+          <input type="radio" name="llm-provider" value="openai" ${sel==='openai'?'checked':''} style="display:none;">
+          <div style="font-size:1.3rem;">🔒</div>
+          <div style="font-weight:600; font-size:0.88rem;">Local LLM</div>
+          <div style="font-size:0.75rem; color:#6b7280; line-height:1.5;">Ollama / LM Studio / vLLM. Fully air-gapped, no data leaves your network.</div>
+          <div style="font-size:0.72rem; color:#3b82f6; margin-top:2px;">✓ Air-gapped · Zero external calls</div>
+        </label>
+      </div>
+      <div id="llm-provider-instructions" style="background:#0a0e17; border:1px solid #1f2937; border-radius:8px; padding:14px; font-size:0.8rem; line-height:1.8;">
+        ${providerInstructions(sel)}
+      </div>
+    `;
+    content.querySelectorAll('.llm-provider-card').forEach(card => {
+      card.addEventListener('click', () => {
+        content.querySelectorAll('.llm-provider-card').forEach(c => c.style.borderColor = '#1f2937');
+        card.style.borderColor = '#10b981';
+        card.querySelector('input').checked = true;
+        llmData.provider = card.dataset.val;
+        const instr = content.querySelector('#llm-provider-instructions');
+        if (instr) instr.innerHTML = providerInstructions(card.dataset.val);
+      });
+    });
+    return;
+  }
+
+  if (step === 'credentials') {
+    nextBtn.textContent = 'Next →';
+    const isLocal = llmData.provider === 'openai';
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">
+        ${isLocal ? 'Local LLM' : 'Anthropic API'} Credentials
+      </h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:18px;">
+        ${isLocal
+          ? 'Connect SOCPilot to your local inference server (Ollama, LM Studio, or vLLM).'
+          : 'Enter your Anthropic API key. Obtain one at console.anthropic.com → API Keys.'}
+      </p>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:500; margin-bottom:4px;">
+            AI_API_KEY <span style="color:#ef4444;">*</span>
+          </label>
+          <input id="llm-api-key" type="password"
+            placeholder="${isLocal ? 'ollama  (any non-empty string works for local servers)' : 'sk-ant-api03-…'}"
+            class="cred-input"
+            style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem; font-family:'JetBrains Mono',monospace;"
+            value="${esc(llmData.values['AI_API_KEY'] || '')}">
+          <p style="font-size:0.72rem; color:#4b5563; margin-top:4px;">
+            ${isLocal
+              ? 'Local servers ignore this value — use any non-empty string (e.g. <code>ollama</code>).'
+              : 'Get your key at <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:#10b981;">console.anthropic.com</a> → API Keys'}
+          </p>
+        </div>
+        ${isLocal ? `
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:500; margin-bottom:4px;">AI_BASE_URL</label>
+          <input id="llm-base-url" type="text"
+            placeholder="http://localhost:11434/v1"
+            class="cred-input"
+            style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem; font-family:'JetBrains Mono',monospace;"
+            value="${esc(llmData.values['AI_BASE_URL'] || 'http://localhost:11434/v1')}">
+          <p style="font-size:0.72rem; color:#4b5563; margin-top:4px;">
+            Ollama: <code>:11434/v1</code> &nbsp;·&nbsp; LM Studio: <code>:1234/v1</code> &nbsp;·&nbsp; vLLM: <code>:8080/v1</code>
+          </p>
+        </div>` : ''}
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:500; margin-bottom:4px;">
+            AI_MODEL <span style="color:#4b5563; font-size:0.72rem;">(optional override)</span>
+          </label>
+          <input id="llm-model" type="text"
+            placeholder="${isLocal ? 'qwen2.5:7b' : 'claude-opus-4-6'}"
+            class="cred-input"
+            style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem; font-family:'JetBrains Mono',monospace;"
+            value="${esc(llmData.values['AI_MODEL'] || '')}">
+          <p style="font-size:0.72rem; color:#4b5563; margin-top:4px;">
+            ${isLocal
+              ? 'Must support function/tool calling. Recommended: <code>qwen2.5:7b</code> or <code>llama3.2:3b</code>.'
+              : 'Default: <code>claude-opus-4-6</code> &nbsp;·&nbsp; Faster/cheaper: <code>claude-sonnet-4-6</code>'}
+          </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+          <button onclick="llmTestConnection()" id="llm-cred-test-btn"
+            style="padding:7px 16px; background:#1f2937; border:none; border-radius:7px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:background 0.15s;"
+            onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#1f2937'">
+            ↻ Test Connection
+          </button>
+          <span id="llm-cred-test-result" style="font-size:0.8rem; color:#6b7280;"></span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (step === 'summary') {
+    nextBtn.textContent = 'Apply & Close';
+    const envContent = buildLLMEnvContent();
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">AI Engine Configuration Ready</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:14px;">
+        Apply to the running server or download the <code style="font-family:monospace; color:#10b981;">.env</code> snippet.
+        Restart the server after applying to activate.
+      </p>
+      <div style="background:#0a0e17; border:1px solid #1f2937; border-radius:8px; padding:12px 14px; max-height:160px; overflow-y:auto; margin-bottom:16px;">
+        <pre style="font-size:0.73rem; font-family:'JetBrains Mono',monospace; color:#6b7280; white-space:pre-wrap; margin:0;">${esc(envContent)}</pre>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="downloadLLMEnv()" class="btn-ghost" style="flex:1;">↓ Download snippet</button>
+        <button onclick="applyLLMToServer()" class="btn-primary" style="flex:1;">Apply to Server</button>
+      </div>
+      <p id="llm-apply-status" style="font-size:0.75rem; margin-top:10px; text-align:center; color:#6b7280;"></p>
+    `;
+  }
+}
+
+function updateLLMDots() {
+  const dots = qs('#llm-setup-dots');
+  if (!dots) return;
+  dots.innerHTML = '';
+  llmSteps.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i < llmStepIdx ? ' done' : i === llmStepIdx ? ' active' : '');
+    dots.appendChild(d);
+  });
+}
+
+function collectLLMStep() {
+  const step = llmSteps[llmStepIdx];
+  if (step === 'provider') {
+    const radio = document.querySelector('input[name="llm-provider"]:checked');
+    if (radio) llmData.provider = radio.value;
+  }
+  if (step === 'credentials') {
+    const key     = qs('#llm-api-key');
+    const baseUrl = qs('#llm-base-url');
+    const model   = qs('#llm-model');
+    if (key     && key.value.trim())     llmData.values['AI_API_KEY']  = key.value.trim();
+    if (baseUrl && baseUrl.value.trim()) llmData.values['AI_BASE_URL'] = baseUrl.value.trim();
+    if (model   && model.value.trim())   llmData.values['AI_MODEL']    = model.value.trim();
+  }
+}
+
+function llmNext() {
+  collectLLMStep();
+  if (llmStepIdx >= llmSteps.length - 1) {
+    applyLLMToServer().then(() => setTimeout(() => closeModal('modal-llm-setup'), 1800));
+    return;
+  }
+  llmStepIdx++;
+  renderLLMStep();
+}
+
+function llmBack() {
+  if (llmStepIdx > 0) { llmStepIdx--; renderLLMStep(); }
+}
+
+function buildLLMEnvContent() {
+  const v = llmData.values;
+  const provider = llmData.provider || 'anthropic';
+  const lines = [
+    '# SOCPilot — AI Engine Configuration',
+    `# Generated ${new Date().toISOString()}`,
+    '',
+    `AI_PROVIDER=${provider}`,
+    `AI_API_KEY=${v['AI_API_KEY'] || ''}`,
+  ];
+  if (v['AI_MODEL'])    lines.push(`AI_MODEL=${v['AI_MODEL']}`);
+  if (v['AI_BASE_URL']) lines.push(`AI_BASE_URL=${v['AI_BASE_URL']}`);
+  return lines.join('\n');
+}
+
+function downloadLLMEnv() {
+  const content = buildLLMEnvContent();
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = '.env.ai'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function applyLLMToServer() {
+  const status = qs('#llm-apply-status');
+  if (status) status.textContent = 'Applying…';
+  const values = {
+    ...llmData.values,
+    AI_PROVIDER: llmData.provider,
+  };
+  try {
+    const r = await fetch('/onboard/env', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ values }),
+    });
+    await r.json();
+    if (status) status.textContent = '✓ Applied — restart server to activate new provider/key';
+    await loadHealthStatus();
+  } catch (e) {
+    if (status) status.textContent = `Error: ${e.message}. Use Download instead.`;
+  }
+}
+
+async function llmTestConnection() {
+  // Save current inputs first
+  collectLLMStep();
+  const values = { ...llmData.values, AI_PROVIDER: llmData.provider };
+  const btn    = qs('#llm-cred-test-btn');
+  const result = qs('#llm-cred-test-result');
+  if (!btn || !result) return;
+  btn.textContent = '↻ Testing…'; btn.disabled = true;
+  result.textContent = ''; result.style.color = '#6b7280';
+  try {
+    // Apply config to server, then probe
+    await fetch('/onboard/env', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ values }),
+    });
+    const r    = await fetch('/health/llm');
+    const data = await r.json();
+    if (data.status === 'ok') {
+      result.textContent = `✓ ${data.model} responded in ${data.latency_ms} ms`;
+      result.style.color = '#10b981';
+    } else {
+      result.textContent = `✗ ${data.error || 'connection failed'}`;
+      result.style.color = '#ef4444';
+    }
+  } catch (e) {
+    result.textContent = `✗ ${e.message}`;
+    result.style.color = '#ef4444';
+  } finally {
+    btn.textContent = '↻ Test Connection'; btn.disabled = false;
+  }
+}
+
+
+// ─── MCP Tool Onboarding wizard ────────────────────────────────────────────────
 async function openOnboarding() {
   obStepIdx = 0;
   obData    = { tier: null, selectedTools: [], values: {}, chosenProvider: null };
@@ -848,16 +1175,15 @@ async function openOnboarding() {
     }
   }
 
-  // Always start with the AI provider step
-  obSteps = ['ai-provider', 'tier-select'];
+  // MCP Tools wizard — starts from tier selection (AI config is separate)
+  obSteps = ['tier-select'];
   renderObStep();
   showModal('modal-onboard');
 }
 
 function computeObSteps() {
-  const steps = ['ai-provider', 'tier-select'];
+  const steps = ['tier-select'];
   if (obData.tier === 'custom') steps.push('custom-tools');
-  steps.push('ai-key');
   getToolsWithCreds().forEach(t => steps.push('tool:' + t.id));
   steps.push('summary');
   return steps;
@@ -950,8 +1276,8 @@ function renderObStep() {
     nextBtn.textContent = 'Next →';
     const tiers = obCatalog.tiers || {};
     content.innerHTML = `
-      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Choose your deployment tier</h3>
-      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;">Select which security tools to enable. You can always add more later.</p>
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Choose your MCP tool tier</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;">Select which security tools to enable. Credentials are written to your .env file.</p>
       <div style="display:flex; flex-direction:column; gap:8px;" id="tier-opts">
         ${Object.entries(tiers).map(([id, t]) => `
           <label class="ob-tier-label" data-val="${id}" style="display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:10px; border:2px solid #1f2937; cursor:pointer; transition:border-color 0.15s; background:#0d1421;">
@@ -1182,17 +1508,15 @@ function onboardBack() {
 function buildEnvContent() {
   const v = obData.values;
   const lines = [
-    '# SOCPilot Environment Configuration',
+    '# SOCPilot — MCP Tool Credentials',
     `# Generated ${new Date().toISOString()}`,
     '# Keep secret — never commit to git',
     '',
-    '# AI Inference',
-    `AI_API_KEY=${v['AI_API_KEY'] || ''}`,
-    `MCP_MODE=${v['MCP_MODE'] || 'mock'}`,
+    `MCP_MODE=${v['MCP_MODE'] || 'live'}`,
     '',
     '# Tool Credentials',
   ];
-  const skip = new Set(['AI_API_KEY', 'MCP_MODE']);
+  const skip = new Set(['MCP_MODE']);
   Object.entries(v).filter(([k]) => !skip.has(k)).forEach(([k, val]) => lines.push(`${k}=${val}`));
   return lines.join('\n');
 }
@@ -1237,7 +1561,7 @@ function closeModal(id) {
 
 // Close modal on backdrop click
 document.addEventListener('click', (e) => {
-  ['modal-playbook', 'modal-report', 'modal-onboard'].forEach(id => {
+  ['modal-playbook', 'modal-report', 'modal-onboard', 'modal-llm-setup'].forEach(id => {
     const modal = qs(`#${id}`);
     if (e.target === modal) closeModal(id);
   });
@@ -1246,7 +1570,7 @@ document.addEventListener('click', (e) => {
 // Close on Escape
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    ['modal-playbook', 'modal-report', 'modal-onboard'].forEach(closeModal);
+    ['modal-playbook', 'modal-report', 'modal-onboard', 'modal-llm-setup'].forEach(closeModal);
   }
 });
 

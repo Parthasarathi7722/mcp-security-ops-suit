@@ -231,7 +231,7 @@ TOOLS: dict[str, Tool] = {
         id="prowler", display="Prowler", category="Cloud Security",
         description="CIS, SOC 2, PCI-DSS cloud posture checks for AWS/Azure/GCP",
         tiers=["team", "enterprise"], free=True,
-        doc_url="https://docs.prowler.com/projects/prowler-open-source/en/latest/",
+        doc_url="https://docs.prowler.com",
         credentials=[
             Cred("AWS_ACCESS_KEY_ID",     "AWS Access Key ID",     secret=False,
                  hint="IAM → Security credentials → Create access key (ReadOnlyAccess policy)"),
