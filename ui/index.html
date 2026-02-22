@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOCPilot — AI Security Co-pilot</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+
+  <!-- Fonts (optional — degrades gracefully without internet access) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            soc: {
+              bg:        '#0a0e17',
+              sidebar:   '#0c1220',
+              card:      '#111827',
+              border:    '#1f2937',
+              accent:    '#10b981',
+              'acc-dim': '#064e3b',
+              text:      '#e5e7eb',
+              dim:       '#6b7280',
+              blue:      '#3b82f6',
+              'blue-dim':'#1e3a5f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0a0e17;
+      color: #e5e7eb;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+    /* ── Streaming cursor ── */
+    .streaming::after {
+      content: '▋';
+      display: inline-block;
+      color: #10b981;
+      animation: blink 0.9s step-end infinite;
+      margin-left: 1px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Markdown prose ── */
+    .prose-soc { line-height: 1.75; }
+    .prose-soc h1,.prose-soc h2,.prose-soc h3 {
+      color: #f9fafb; font-weight: 600; margin: 1rem 0 0.4rem;
+    }
+    .prose-soc h1 { font-size: 1.15em; }
+    .prose-soc h2 { font-size: 1.05em; }
+    .prose-soc h3 { font-size: 1em; }
+    .prose-soc p  { margin: 0.5rem 0; }
+    .prose-soc ul,.prose-soc ol { margin: 0.4rem 0 0.4rem 1.4rem; }
+    .prose-soc li { margin: 0.2rem 0; }
+    .prose-soc code {
+      background: #1f2937; padding: 0.1em 0.4em; border-radius: 3px;
+      font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.83em;
+      color: #10b981;
+    }
+    .prose-soc pre {
+      background: #0d1421; border: 1px solid #1f2937; border-radius: 6px;
+      padding: 0.85rem 1rem; overflow-x: auto; margin: 0.6rem 0;
+    }
+    .prose-soc pre code { background: none; padding: 0; color: #e5e7eb; font-size: 0.82em; }
+    .prose-soc table { border-collapse: collapse; width: 100%; margin: 0.6rem 0; font-size: 0.87em; }
+    .prose-soc th { background: #1f2937; padding: 0.4rem 0.75rem; text-align: left; font-weight: 500; }
+    .prose-soc td { border-top: 1px solid #1f2937; padding: 0.4rem 0.75rem; }
+    .prose-soc blockquote {
+      border-left: 3px solid #10b981; padding-left: 0.85rem;
+      color: #9ca3af; margin: 0.6rem 0;
+    }
+    .prose-soc strong { color: #f9fafb; font-weight: 600; }
+    .prose-soc a { color: #10b981; text-decoration: underline; }
+    .prose-soc hr { border-color: #1f2937; margin: 0.75rem 0; }
+
+    /* ── Animations ── */
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeSlide 0.2s ease; }
+
+    /* ── Sidebar item hover ── */
+    .sb-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-radius: 6px;
+      cursor: pointer; transition: background 0.15s;
+      font-size: 0.85rem; color: #d1d5db;
+      border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .sb-item:hover { background: rgba(255,255,255,0.05); }
+    .sb-item.active { background: rgba(16,185,129,0.1); color: #10b981; }
+
+    /* ── Input focus ── */
+    #chat-input:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 1px rgba(16,185,129,0.25); }
+    .cred-input:focus { outline: none; border-color: #3b82f6; }
+
+    /* ── Tool card ── */
+    .tool-card-header { cursor: pointer; user-select: none; }
+    .tool-card-header:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(2px); }
+
+    /* ── Btn primary ── */
+    .btn-primary {
+      background: #10b981; color: #000; font-weight: 500;
+      padding: 8px 18px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.85rem; transition: opacity 0.15s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: #1f2937; color: #e5e7eb;
+      padding: 8px 18px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.85rem; transition: background 0.15s;
+    }
+    .btn-ghost:hover { background: #374151; }
+
+    /* ── Onboard step indicator ── */
+    .step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #1f2937; transition: background 0.2s;
+    }
+    .step-dot.active { background: #10b981; }
+    .step-dot.done   { background: #065f46; }
+  </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+<header id="header" style="background:#0c1220; border-bottom:1px solid #1f2937; height:52px; flex-shrink:0;"
+        class="flex items-center px-4 gap-3">
+  <!-- Logo -->
+  <div class="flex items-center gap-2 select-none">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+      <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+    </svg>
+    <span style="font-weight:700; font-size:0.95rem; letter-spacing:0.04em;">SOCPilot</span>
+    <span style="color:#4b5563; font-size:0.72rem; margin-left:2px;">AI Security Co-pilot</span>
+  </div>
+
+  <div class="flex-1"></div>
+
+  <!-- Mode badge -->
+  <div id="mode-badge" style="background:#064e3b; color:#10b981; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:5px;">
+    <span id="mode-dot" style="width:6px; height:6px; border-radius:50%; background:#10b981; flex-shrink:0;"></span>
+    <span id="mode-text">mock</span>
+  </div>
+
+  <!-- WS status -->
+  <div id="ws-badge" style="background:#1f2937; border-radius:6px; padding:3px 10px; font-size:0.72rem; display:flex; align-items:center; gap:5px; color:#6b7280;">
+    <span id="ws-dot" style="width:6px; height:6px; border-radius:50%; background:#6b7280; flex-shrink:0;"></span>
+    <span id="ws-text">connecting</span>
+  </div>
+
+  <!-- Setup -->
+  <button onclick="openOnboarding()" class="btn-ghost" style="padding:5px 12px; font-size:0.78rem;">
+    ⚙ Setup
+  </button>
+
+  <!-- New Chat -->
+  <button onclick="newChat()" class="btn-primary" style="padding:5px 14px; font-size:0.78rem;">
+    + New Chat
+  </button>
+</header>
+
+
+<!-- ══ MAIN LAYOUT ═════════════════════════════════════════════════════════ -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────────────────── -->
+  <aside style="width:232px; background:#0c1220; border-right:1px solid #1f2937; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column;">
+
+    <!-- Playbooks -->
+    <div class="p-3">
+      <div style="padding:6px 8px 4px; font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4b5563;">
+        Playbooks
+      </div>
+      <div id="playbook-list" class="mt-1 space-y-0.5">
+        <!-- Populated by JS -->
+        <div style="padding:6px 8px; font-size:0.8rem; color:#4b5563;">Loading…</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1f2937;" class="p-3">
+      <div style="padding:6px 8px 4px; font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4b5563;">
+        Reports
+      </div>
+      <button onclick="openReportModal()" class="sb-item">
+        <span style="color:#10b981;">↓</span> Generate Report
+      </button>
+    </div>
+
+    <div style="border-top:1px solid #1f2937;" class="p-3">
+      <div style="padding:6px 8px 4px; font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4b5563;">
+        Session
+      </div>
+      <button onclick="clearHistory()" class="sb-item">
+        <span style="color:#f59e0b;">↺</span> Clear History
+      </button>
+      <button onclick="openOnboarding()" class="sb-item">
+        <span style="color:#8b5cf6;">⚙</span> Tool Onboarding
+      </button>
+    </div>
+
+    <!-- Quick queries -->
+    <div style="border-top:1px solid #1f2937;" class="p-3">
+      <div style="padding:6px 8px 4px; font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4b5563;">
+        Quick Queries
+      </div>
+      <button onclick="sendQuick('Is CVE-2024-50623 being actively exploited in the wild? Check payments-api.')" class="sb-item" style="font-size:0.78rem; color:#6b7280;">
+        CVE exploitation check
+      </button>
+      <button onclick="sendQuick('Check IP reputation for 185.220.101.34 — is it malicious?')" class="sb-item" style="font-size:0.78rem; color:#6b7280;">
+        IP reputation lookup
+      </button>
+      <button onclick="sendQuick('Check AWS cloud posture for SOC 2 compliance gaps and critical findings.')" class="sb-item" style="font-size:0.78rem; color:#6b7280;">
+        Cloud compliance check
+      </button>
+      <button onclick="sendQuick('Hunt for Cl0p ransomware TTPs across our SIEM environments.')" class="sb-item" style="font-size:0.78rem; color:#6b7280;">
+        Threat hunt: Cl0p TTPs
+      </button>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <!-- LLM Status card -->
+    <div style="border-top:1px solid #1f2937; padding:10px 12px;">
+      <div style="font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4b5563; margin-bottom:6px;">AI Engine</div>
+      <div id="llm-status-card" style="background:#0a0e17; border-radius:8px; padding:8px 10px; font-size:0.75rem;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+          <span id="llm-status-dot" style="width:6px; height:6px; border-radius:50%; background:#6b7280; flex-shrink:0;"></span>
+          <span id="llm-status-provider" style="color:#9ca3af; font-weight:500;">checking…</span>
+        </div>
+        <div id="llm-status-model" style="color:#4b5563; font-family:'JetBrains Mono',monospace; font-size:0.7rem; margin-bottom:6px;"></div>
+        <button onclick="testLLMConnection()" id="llm-test-btn"
+          style="width:100%; padding:4px 0; background:#1f2937; border:none; border-radius:5px; color:#9ca3af; font-size:0.72rem; cursor:pointer; transition:background 0.15s;"
+          onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#1f2937'">
+          ↻ Test Connection
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="border-top:1px solid #1f2937; padding:8px 12px; font-size:0.68rem; color:#374151;">
+      SOCPilot v1.0 · Private subnet deployment
+    </div>
+  </aside>
+
+
+  <!-- ── CHAT AREA ─────────────────────────────────────────────────────── -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+
+    <!-- Messages -->
+    <div id="messages" class="flex-1 overflow-y-auto" style="padding:24px; display:flex; flex-direction:column; gap:20px;">
+
+      <!-- Welcome screen -->
+      <div id="welcome-screen" style="margin:auto; text-align:center; max-width:480px; padding:40px 0;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" style="margin:0 auto 16px;">
+          <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+        </svg>
+        <h1 style="font-size:1.4rem; font-weight:700; color:#f9fafb; margin-bottom:8px;">SOCPilot</h1>
+        <p style="color:#6b7280; line-height:1.6; font-size:0.9rem; margin-bottom:24px;">
+          AI-powered Security Operations Co-pilot. Run investigations, triage vulnerabilities,
+          hunt threats, and generate incident reports — all in one interface.
+        </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <button onclick="sendQuick('Is CVE-2024-50623 actively exploited?')"
+                  style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
+                  onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#1f2937'">
+            CVE check
+          </button>
+          <button onclick="launchPlaybook('incident-response')"
+                  style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
+                  onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='#1f2937'">
+            Incident response
+          </button>
+          <button onclick="launchPlaybook('threat-hunting')"
+                  style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
+                  onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1f2937'">
+            Threat hunt
+          </button>
+          <button onclick="openOnboarding()"
+                  style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:border-color 0.15s;"
+                  onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='#1f2937'">
+            ⚙ Set up tools
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input bar -->
+    <div style="background:#0c1220; border-top:1px solid #1f2937; padding:16px 20px; flex-shrink:0;">
+      <div style="display:flex; gap:10px; align-items:flex-end; max-width:860px; margin:0 auto;">
+        <textarea
+          id="chat-input"
+          placeholder="Ask SOCPilot a security question… (Shift+Enter for new line)"
+          rows="1"
+          style="flex:1; background:#111827; border:1px solid #1f2937; border-radius:10px; padding:10px 14px; color:#e5e7eb; font-size:0.875rem; resize:none; font-family:inherit; line-height:1.5; max-height:160px; transition:border-color 0.2s;"
+          onkeydown="handleInputKeydown(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex-shrink:0;">
+          <label style="display:flex; align-items:center; gap:5px; font-size:0.75rem; color:#6b7280; cursor:pointer; user-select:none;">
+            <input type="checkbox" id="verbose-toggle" style="accent-color:#10b981;">
+            verbose
+          </label>
+          <button id="send-btn" onclick="sendMessage()" class="btn-primary" style="padding:10px 20px; min-width:90px;">
+            <span id="send-label">→ Send</span>
+          </button>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:0.7rem; color:#374151; margin-top:8px; max-width:860px; margin-left:auto; margin-right:auto;">
+        Running in <span id="footer-mode" style="color:#10b981;">mock</span> mode —
+        set <code style="font-family:monospace; color:#6b7280;">MCP_MODE=live</code> and configure credentials for real data
+      </p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ MODAL: PLAYBOOK LAUNCHER ════════════════════════════════════════════ -->
+<div id="modal-playbook" class="modal-backdrop" style="display:none; position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;">
+  <div class="fade-in" style="background:#111827; border:1px solid #1f2937; border-radius:14px; padding:24px; width:100%; max-width:440px; margin:16px;">
+    <h2 id="pb-modal-title" style="font-size:1rem; font-weight:600; margin-bottom:4px;"></h2>
+    <p id="pb-modal-desc" style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;"></p>
+    <label style="display:block; font-size:0.82rem; font-weight:500; margin-bottom:6px;">Target</label>
+    <input id="pb-target"
+           type="text"
+           placeholder="e.g. CVE-2024-50623 in payments-api"
+           style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem;"
+           onkeydown="if(event.key==='Enter') confirmPlaybook()">
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button onclick="closeModal('modal-playbook')" class="btn-ghost" style="flex:1;">Cancel</button>
+      <button onclick="confirmPlaybook()" class="btn-primary" style="flex:1;">Run Playbook</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ MODAL: REPORT GENERATOR ═════════════════════════════════════════════ -->
+<div id="modal-report" class="modal-backdrop" style="display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center;">
+  <div class="fade-in" style="background:#111827; border:1px solid #1f2937; border-radius:14px; padding:24px; width:100%; max-width:440px; margin:16px;">
+    <h2 style="font-size:1rem; font-weight:600; margin-bottom:16px;">Generate Investigation Report</h2>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div>
+        <label style="display:block; font-size:0.82rem; font-weight:500; margin-bottom:6px;">Playbook</label>
+        <select id="rpt-playbook"
+                style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem;">
+        </select>
+      </div>
+      <div>
+        <label style="display:block; font-size:0.82rem; font-weight:500; margin-bottom:6px;">Target</label>
+        <input id="rpt-target" type="text" placeholder="e.g. payments-api"
+               style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem;">
+      </div>
+    </div>
+    <div id="rpt-status" style="display:none; margin-top:12px; padding:10px 14px; border-radius:8px; font-size:0.82rem;"></div>
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button onclick="closeModal('modal-report')" class="btn-ghost" style="flex:1;">Cancel</button>
+      <button onclick="generateReport()" id="rpt-btn" class="btn-primary" style="flex:1;">Generate</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ MODAL: ONBOARDING WIZARD ════════════════════════════════════════════ -->
+<div id="modal-onboard" class="modal-backdrop" style="display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; overflow-y:auto; padding:16px;">
+  <div class="fade-in" style="background:#111827; border:1px solid #1f2937; border-radius:14px; width:100%; max-width:580px; margin:auto; overflow:hidden;">
+
+    <!-- Wizard header -->
+    <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid #1f2937;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+        <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+      </svg>
+      <span style="font-weight:600; font-size:0.95rem;">SOCPilot Setup Wizard</span>
+      <div style="flex:1;"></div>
+      <!-- Step dots -->
+      <div id="onboard-dots" style="display:flex; gap:5px; align-items:center;"></div>
+      <button onclick="closeModal('modal-onboard')" style="background:none; border:none; color:#6b7280; cursor:pointer; font-size:1.1rem; padding:2px 6px;" onmouseover="this.style.color='#e5e7eb'" onmouseout="this.style.color='#6b7280'">✕</button>
+    </div>
+
+    <!-- Step content -->
+    <div id="onboard-content" style="padding:24px; min-height:280px;"></div>
+
+    <!-- Navigation -->
+    <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-top:1px solid #1f2937;">
+      <button id="onboard-back-btn" onclick="onboardBack()" class="btn-ghost" style="display:none;">← Back</button>
+      <div style="flex:1;"></div>
+      <button onclick="closeModal('modal-onboard')" class="btn-ghost">Cancel</button>
+      <button id="onboard-next-btn" onclick="onboardNext()" class="btn-primary">Next →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ JAVASCRIPT ═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── marked config ────────────────────────────────────────────────────────────
+marked.setOptions({ breaks: true, gfm: true });
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let ws               = null;
+let sessionId        = localStorage.getItem('soc-session-id') || crypto.randomUUID();
+let isStreaming      = false;
+let currentMsgEl     = null;   // current assistant message DOM node
+let textAccum        = '';     // accumulated markdown for the current turn
+let playbookMeta     = {};     // { name: { icon, label, desc } }
+let playbookTemplates= {};     // { name: "prompt template with {target}" }
+let activePlaybook   = null;   // name of the playbook being launched
+
+// Onboarding
+let obCatalog        = null;   // { tools: {...}, tiers: {...} }
+let obStepIdx        = 0;
+let obSteps          = [];     // computed step array e.g. ['tier-select', 'ai-key', 'tool:sentinel', 'summary']
+let obData           = {};     // { tier, selectedTools: [], values: {} }
+
+localStorage.setItem('soc-session-id', sessionId);
+
+const PLAYBOOK_META = {
+  'vuln-triage':         { icon: '🔍', label: 'Vuln Triage',       desc: 'Triage CVEs with threat intel and reachability analysis' },
+  'incident-response':   { icon: '🚨', label: 'Incident Response',  desc: 'Correlate logs, scope users, contain threats' },
+  'threat-hunting':      { icon: '🎯', label: 'Threat Hunt',        desc: 'Hunt for TTPs with detection rules and SIEM queries' },
+  'compliance-audit':    { icon: '📋', label: 'Compliance Audit',   desc: 'Cloud posture, code scanning, gap report' },
+  'secret-leak-response':{ icon: '🔑', label: 'Secret Leak',        desc: 'Scope, rotate, revoke sessions, notify' },
+  'cloud-posture-review':{ icon: '☁',  label: 'Cloud Posture',      desc: 'Prowler checks, WAF events, drift analysis' },
+};
+
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/${sessionId}`);
+
+  ws.onopen    = () => setWSStatus('connected');
+  ws.onclose   = () => { setWSStatus('disconnected'); setTimeout(connectWS, 3000); };
+  ws.onerror   = () => setWSStatus('error');
+  ws.onmessage = (ev) => {
+    let data;
+    try { data = JSON.parse(ev.data); } catch { return; }
+    handleEvent(data);
+  };
+}
+
+function setWSStatus(s) {
+  const colours = { connected:'#10b981', disconnected:'#6b7280', error:'#ef4444' };
+  qs('#ws-dot').style.background = colours[s] || '#6b7280';
+  qs('#ws-text').textContent = s;
+}
+
+
+// ─── Event dispatch ───────────────────────────────────────────────────────────
+function handleEvent(ev) {
+  switch (ev.type) {
+    case 'text':        onText(ev.text);                    break;
+    case 'tool_call':   onToolCall(ev.name, ev.inputs);     break;
+    case 'tool_result': onToolResult(ev.name, ev.content);  break;
+    case 'done':        onDone(ev.turns);                   break;
+    case 'error':       onError(ev.message);                break;
+  }
+}
+
+function onText(text) {
+  if (!currentMsgEl) {
+    hideWelcome();
+    currentMsgEl = buildAssistantMessage();
+  }
+  textAccum += text;
+  const el = currentMsgEl.querySelector('.msg-body');
+  el.innerHTML = marked.parse(textAccum);
+  el.classList.add('streaming');
+  scrollBottom();
+}
+
+function onToolCall(name, inputs) {
+  if (!currentMsgEl) {
+    hideWelcome();
+    currentMsgEl = buildAssistantMessage();
+  }
+  const container = currentMsgEl.querySelector('.tools-zone');
+  const card = document.createElement('div');
+  card.className = 'tool-card fade-in';
+  card.style.cssText = 'margin-top:8px; border-radius:8px; overflow:hidden; border:1px solid #1e3a5f; background:#0d1421;';
+  card.dataset.toolName = name;
+
+  const inputPrev = JSON.stringify(inputs).slice(0, 100);
+  card.innerHTML = `
+    <div class="tool-card-header" onclick="toggleCard(this.parentElement)"
+         style="display:flex; align-items:center; gap:8px; padding:8px 12px;">
+      <span style="color:#3b82f6; font-size:0.75rem; flex-shrink:0;">⚙</span>
+      <code style="font-size:0.78rem; color:#60a5fa; font-family:'JetBrains Mono',monospace;">${esc(name)}</code>
+      <span style="font-size:0.72rem; color:#4b5563; font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${esc(inputPrev)}…</span>
+      <span class="chevron" style="color:#6b7280; font-size:0.7rem; flex-shrink:0;">▼</span>
+    </div>
+    <div class="card-body" style="display:none; padding:10px 12px; border-top:1px solid #1e3a5f;">
+      <pre style="font-size:0.75rem; color:#93c5fd; font-family:'JetBrains Mono',monospace; overflow-x:auto; white-space:pre-wrap;">${esc(JSON.stringify(inputs, null, 2))}</pre>
+    </div>
+    <div class="card-result" style="display:none;"></div>
+  `;
+  container.appendChild(card);
+  scrollBottom();
+}
+
+function onToolResult(name, content) {
+  if (!currentMsgEl) return;
+  // Find last open card for this tool
+  const cards = currentMsgEl.querySelectorAll(`.tool-card[data-tool-name="${CSS.escape(name)}"]`);
+  const card   = cards.length ? cards[cards.length - 1] : currentMsgEl.querySelector('.tool-card:last-child');
+  if (!card) return;
+
+  const resEl = card.querySelector('.card-result');
+  resEl.style.cssText = 'display:block; padding:10px 12px; border-top:1px solid #064e3b; background:#022c22; max-height:220px; overflow-y:auto;';
+  resEl.innerHTML = `<pre style="font-size:0.75rem; color:#6ee7b7; font-family:'JetBrains Mono',monospace; white-space:pre-wrap;">${esc(content.slice(0, 2000))}${content.length > 2000 ? '\n…[truncated]' : ''}</pre>`;
+
+  card.removeAttribute('data-tool-name'); // prevent double-attaching
+  scrollBottom();
+}
+
+function onDone(turns) {
+  isStreaming = false;
+  if (currentMsgEl) {
+    const body = currentMsgEl.querySelector('.msg-body');
+    body.classList.remove('streaming');
+    if (textAccum) body.innerHTML = marked.parse(textAccum);
+    if (turns > 0) {
+      const meta = currentMsgEl.querySelector('.msg-meta');
+      if (meta) meta.textContent = `${turns} turn${turns > 1 ? 's' : ''}`;
+    }
+  }
+  currentMsgEl = null;
+  textAccum    = '';
+  setSending(false);
+}
+
+function onError(msg) {
+  const el = document.createElement('div');
+  el.className = 'fade-in';
+  el.style.cssText = 'padding:12px 16px; background:#7f1d1d; border:1px solid #991b1b; border-radius:8px; font-size:0.85rem; color:#fca5a5;';
+  el.textContent = `Error: ${msg}`;
+  qs('#messages').appendChild(el);
+  onDone(0);
+  scrollBottom();
+}
+
+
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
+function buildUserMessage(text) {
+  hideWelcome();
+  const el = document.createElement('div');
+  el.className = 'fade-in';
+  el.style.cssText = 'display:flex; justify-content:flex-end;';
+  el.innerHTML = `
+    <div style="max-width:72%; padding:10px 16px; background:#1e3a5f; border-radius:14px; border-bottom-right-radius:4px; font-size:0.875rem; line-height:1.65; color:#e5e7eb; white-space:pre-wrap;">${esc(text)}</div>
+  `;
+  qs('#messages').appendChild(el);
+  scrollBottom();
+}
+
+function buildAssistantMessage() {
+  const el = document.createElement('div');
+  el.className = 'fade-in';
+  el.style.cssText = 'display:flex; gap:12px; max-width:860px;';
+  el.innerHTML = `
+    <div style="flex-shrink:0; width:28px; height:28px; border-radius:50%; background:#064e3b; color:#10b981; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; margin-top:2px;">S</div>
+    <div style="flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span style="font-size:0.8rem; font-weight:600; color:#10b981;">SOCPilot</span>
+        <span class="msg-meta" style="font-size:0.7rem; color:#374151;"></span>
+      </div>
+      <div class="prose-soc msg-body" style="font-size:0.875rem; color:#d1d5db;"></div>
+      <div class="tools-zone" style="margin-top:4px;"></div>
+    </div>
+  `;
+  qs('#messages').appendChild(el);
+  return el;
+}
+
+function toggleCard(card) {
+  const body    = card.querySelector('.card-body');
+  const chevron = card.querySelector('.chevron');
+  const open    = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  chevron.textContent = open ? '▼' : '▲';
+}
+
+function hideWelcome() {
+  const w = qs('#welcome-screen');
+  if (w) w.style.display = 'none';
+}
+
+function scrollBottom() {
+  const m = qs('#messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+
+// ─── Sending ──────────────────────────────────────────────────────────────────
+function sendMessage() {
+  const inp  = qs('#chat-input');
+  const text = inp.value.trim();
+  if (!text || isStreaming) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    alert('WebSocket not connected — please wait and try again.');
+    return;
+  }
+  inp.value = '';
+  inp.style.height = 'auto';
+  buildUserMessage(text);
+  dispatchQuery(text);
+}
+
+function sendQuick(text) {
+  qs('#chat-input').value = '';
+  buildUserMessage(text);
+  dispatchQuery(text);
+}
+
+function dispatchQuery(text) {
+  isStreaming = true;
+  setSending(true);
+  ws.send(JSON.stringify({ query: text, verbose: qs('#verbose-toggle').checked }));
+}
+
+function handleInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function setSending(on) {
+  const btn = qs('#send-btn');
+  btn.disabled = on;
+  qs('#send-label').textContent = on ? '⋯ Running' : '→ Send';
+  btn.style.opacity = on ? '0.6' : '1';
+}
+
+
+// ─── Playbooks ────────────────────────────────────────────────────────────────
+async function loadPlaybooks() {
+  try {
+    const r = await fetch('/playbooks/detail');
+    const data = await r.json();
+    playbookTemplates = data.playbooks || {};
+
+    const list = qs('#playbook-list');
+    list.innerHTML = '';
+
+    Object.keys(playbookTemplates).forEach(name => {
+      const meta = PLAYBOOK_META[name] || { icon: '▶', label: name, desc: '' };
+      playbookMeta[name] = meta;
+
+      const btn = document.createElement('button');
+      btn.className = 'sb-item';
+      btn.innerHTML = `<span>${meta.icon}</span><span>${meta.label}</span>`;
+      btn.title = meta.desc;
+      btn.onclick = () => launchPlaybook(name);
+      list.appendChild(btn);
+    });
+
+    // Populate report dropdown
+    const sel = qs('#rpt-playbook');
+    sel.innerHTML = '';
+    Object.keys(playbookTemplates).forEach(name => {
+      const meta = PLAYBOOK_META[name] || { label: name };
+      const opt  = document.createElement('option');
+      opt.value       = name;
+      opt.textContent = `${meta.icon || ''} ${meta.label}`.trim();
+      sel.appendChild(opt);
+    });
+
+  } catch (e) {
+    console.warn('Could not load playbooks:', e);
+  }
+}
+
+function launchPlaybook(name) {
+  activePlaybook = name;
+  const meta = PLAYBOOK_META[name] || { icon: '▶', label: name, desc: '' };
+  qs('#pb-modal-title').textContent = `${meta.icon} ${meta.label}`;
+  qs('#pb-modal-desc').textContent  = meta.desc;
+  qs('#pb-target').value            = '';
+  showModal('modal-playbook');
+  setTimeout(() => qs('#pb-target').focus(), 60);
+}
+
+function confirmPlaybook() {
+  const target = qs('#pb-target').value.trim();
+  if (!target) { qs('#pb-target').focus(); return; }
+  closeModal('modal-playbook');
+
+  const template = playbookTemplates[activePlaybook] || '';
+  const prompt   = template.replace(/\{target\}/g, target);
+  const meta     = PLAYBOOK_META[activePlaybook] || { label: activePlaybook };
+
+  buildUserMessage(`[Playbook: ${meta.label}] ${target}`);
+  dispatchQuery(prompt);
+}
+
+
+// ─── Report generation ────────────────────────────────────────────────────────
+function openReportModal() {
+  qs('#rpt-target').value = '';
+  qs('#rpt-status').style.display = 'none';
+  qs('#rpt-btn').disabled = false;
+  qs('#rpt-btn').textContent = 'Generate';
+  showModal('modal-report');
+}
+
+async function generateReport() {
+  const playbook = qs('#rpt-playbook').value;
+  const target   = qs('#rpt-target').value.trim();
+  if (!target) { qs('#rpt-target').focus(); return; }
+
+  const btn    = qs('#rpt-btn');
+  const status = qs('#rpt-status');
+
+  btn.disabled    = true;
+  btn.textContent = 'Generating…';
+  status.style.cssText = 'display:block; margin-top:12px; padding:10px 14px; border-radius:8px; background:#064e3b; color:#10b981; font-size:0.82rem;';
+  status.textContent   = '⏳ Running investigation — this may take a minute…';
+
+  try {
+    const r = await fetch('/report', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ playbook, target }),
+    });
+    const data = await r.json();
+
+    if (data.status === 'ok') {
+      const fname = data.file.split(/[\\/]/).pop();
+      status.innerHTML = `✓ Report ready — <a href="/reports/${encodeURIComponent(fname)}" download
+        style="text-decoration:underline; color:#34d399;">${fname}</a>
+        &nbsp;(${(data.bytes / 1024).toFixed(1)} KB, ${data.turns} turns)`;
+    } else {
+      throw new Error('Server returned non-ok status');
+    }
+  } catch (e) {
+    status.style.cssText = 'display:block; margin-top:12px; padding:10px 14px; border-radius:8px; background:#7f1d1d; color:#fca5a5; font-size:0.82rem;';
+    status.textContent   = `Error: ${e.message}`;
+    btn.disabled    = false;
+    btn.textContent = 'Retry';
+  }
+}
+
+
+// ─── Session management ───────────────────────────────────────────────────────
+function newChat() {
+  sessionId = crypto.randomUUID();
+  localStorage.setItem('soc-session-id', sessionId);
+  qs('#messages').innerHTML = '';
+  const welcome = buildWelcomeScreen();
+  qs('#messages').appendChild(welcome);
+  if (ws) ws.close();
+  connectWS();
+  isStreaming   = false;
+  currentMsgEl  = null;
+  textAccum     = '';
+  setSending(false);
+}
+
+function clearHistory() {
+  qs('#messages').innerHTML = '';
+  const welcome = buildWelcomeScreen();
+  qs('#messages').appendChild(welcome);
+  if (ws) ws.close();
+  connectWS();
+  isStreaming   = false;
+  currentMsgEl  = null;
+  textAccum     = '';
+  setSending(false);
+}
+
+function buildWelcomeScreen() {
+  const el = document.createElement('div');
+  el.id = 'welcome-screen';
+  el.style.cssText = 'margin:auto; text-align:center; max-width:480px; padding:40px 0;';
+  el.innerHTML = `
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" style="margin:0 auto 16px;"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
+    <h1 style="font-size:1.4rem; font-weight:700; color:#f9fafb; margin-bottom:8px;">SOCPilot</h1>
+    <p style="color:#6b7280; line-height:1.6; font-size:0.9rem; margin-bottom:24px;">
+      AI-powered Security Operations Co-pilot. Run investigations, triage vulnerabilities,
+      hunt threats, and generate incident reports.
+    </p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <button onclick="sendQuick('Is CVE-2024-50623 actively exploited?')"
+        style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
+        onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#1f2937'">CVE check</button>
+      <button onclick="launchPlaybook('incident-response')"
+        style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
+        onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='#1f2937'">Incident response</button>
+      <button onclick="launchPlaybook('threat-hunting')"
+        style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
+        onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1f2937'">Threat hunt</button>
+      <button onclick="openOnboarding()"
+        style="padding:8px 16px; background:#111827; border:1px solid #1f2937; border-radius:8px; color:#e5e7eb; font-size:0.82rem; cursor:pointer;"
+        onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='#1f2937'">⚙ Set up tools</button>
+    </div>
+  `;
+  return el;
+}
+
+
+// ─── Onboarding wizard ────────────────────────────────────────────────────────
+async function openOnboarding() {
+  obStepIdx = 0;
+  obData    = { tier: null, selectedTools: [], values: {}, chosenProvider: null };
+
+  if (!obCatalog) {
+    try {
+      const r = await fetch('/onboard/tools');
+      obCatalog = await r.json();
+    } catch {
+      obCatalog = { tools: {}, tiers: {} };
+    }
+  }
+
+  // Always start with the AI provider step
+  obSteps = ['ai-provider', 'tier-select'];
+  renderObStep();
+  showModal('modal-onboard');
+}
+
+function computeObSteps() {
+  const steps = ['ai-provider', 'tier-select'];
+  if (obData.tier === 'custom') steps.push('custom-tools');
+  steps.push('ai-key');
+  getToolsWithCreds().forEach(t => steps.push('tool:' + t.id));
+  steps.push('summary');
+  return steps;
+}
+
+function getToolsWithCreds() {
+  if (!obCatalog) return [];
+  const allTools = obCatalog.tools || {};
+  let toolIds = [];
+  if (obData.tier === 'custom') {
+    toolIds = obData.selectedTools;
+  } else {
+    const tierDef = (obCatalog.tiers || {})[obData.tier];
+    toolIds = tierDef ? tierDef.tools : [];
+  }
+  return toolIds.map(id => allTools[id]).filter(t => t && t.credentials && t.credentials.length > 0);
+}
+
+function renderObStep() {
+  const step    = obSteps[obStepIdx];
+  const content = qs('#onboard-content');
+  const backBtn = qs('#onboard-back-btn');
+  const nextBtn = qs('#onboard-next-btn');
+
+  backBtn.style.display = obStepIdx === 0 ? 'none' : 'inline-block';
+
+  // Update step dots
+  updateObDots();
+
+  if (step === 'ai-provider') {
+    nextBtn.textContent = 'Next →';
+    const sel = obData.chosenProvider || 'anthropic';
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Choose your AI provider</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;">
+        SOCPilot can run on Anthropic's cloud API <em>or</em> a fully local LLM with no external calls.
+      </p>
+
+      <!-- Provider cards -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+        <label class="ob-provider-card" data-val="anthropic"
+          style="display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:10px; border:2px solid ${sel==='anthropic'?'#10b981':'#1f2937'}; cursor:pointer; background:#0d1421; transition:border-color 0.15s;">
+          <input type="radio" name="provider" value="anthropic" ${sel==='anthropic'?'checked':''} style="display:none;">
+          <div style="font-size:1.3rem;">☁</div>
+          <div style="font-weight:600; font-size:0.88rem;">Anthropic API</div>
+          <div style="font-size:0.75rem; color:#6b7280; line-height:1.5;">Cloud-hosted Claude models. Best accuracy and reasoning. Requires API key.</div>
+          <div style="font-size:0.72rem; color:#10b981; margin-top:2px;">✓ Best accuracy · Extended thinking</div>
+        </label>
+        <label class="ob-provider-card" data-val="openai"
+          style="display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:10px; border:2px solid ${sel==='openai'?'#10b981':'#1f2937'}; cursor:pointer; background:#0d1421; transition:border-color 0.15s;">
+          <input type="radio" name="provider" value="openai" ${sel==='openai'?'checked':''} style="display:none;">
+          <div style="font-size:1.3rem;">🔒</div>
+          <div style="font-weight:600; font-size:0.88rem;">Local LLM</div>
+          <div style="font-size:0.75rem; color:#6b7280; line-height:1.5;">Ollama / LM Studio / vLLM. Fully air-gapped, no data leaves your network.</div>
+          <div style="font-size:0.72rem; color:#3b82f6; margin-top:2px;">✓ Air-gapped · Zero external calls</div>
+        </label>
+      </div>
+
+      <!-- Instructions (dynamic based on selection) -->
+      <div id="ob-provider-instructions" style="background:#0a0e17; border:1px solid #1f2937; border-radius:8px; padding:14px; font-size:0.8rem; line-height:1.8;">
+        ${providerInstructions(sel)}
+      </div>
+
+      <!-- Test connection -->
+      <div style="margin-top:14px; display:flex; align-items:center; gap:10px;">
+        <button onclick="obTestConnection()" id="ob-test-btn"
+          style="padding:7px 16px; background:#1f2937; border:none; border-radius:7px; color:#e5e7eb; font-size:0.82rem; cursor:pointer; transition:background 0.15s;"
+          onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#1f2937'">
+          ↻ Test Connection
+        </button>
+        <span id="ob-test-result" style="font-size:0.8rem; color:#6b7280;"></span>
+      </div>
+    `;
+
+    // Highlight selected card and swap instructions on click
+    content.querySelectorAll('.ob-provider-card').forEach(card => {
+      card.addEventListener('click', () => {
+        content.querySelectorAll('.ob-provider-card').forEach(c => c.style.borderColor = '#1f2937');
+        card.style.borderColor = '#10b981';
+        card.querySelector('input').checked = true;
+        obData.chosenProvider = card.dataset.val;
+        const instr = content.querySelector('#ob-provider-instructions');
+        if (instr) instr.innerHTML = providerInstructions(card.dataset.val);
+      });
+    });
+    return;
+  }
+
+  if (step === 'tier-select') {
+    nextBtn.textContent = 'Next →';
+    const tiers = obCatalog.tiers || {};
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Choose your deployment tier</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:16px;">Select which security tools to enable. You can always add more later.</p>
+      <div style="display:flex; flex-direction:column; gap:8px;" id="tier-opts">
+        ${Object.entries(tiers).map(([id, t]) => `
+          <label class="ob-tier-label" data-val="${id}" style="display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:10px; border:2px solid #1f2937; cursor:pointer; transition:border-color 0.15s; background:#0d1421;">
+            <input type="radio" name="tier" value="${id}" style="margin-top:3px; accent-color:#10b981; flex-shrink:0;">
+            <div>
+              <div style="font-weight:500; font-size:0.88rem;">${esc(t.label)}</div>
+              <div style="font-size:0.78rem; color:#6b7280; margin-top:2px;">${esc(t.description)}</div>
+              <div style="font-size:0.72rem; color:#4b5563; margin-top:4px;">${t.tools.length} tools</div>
+            </div>
+          </label>
+        `).join('')}
+        <label class="ob-tier-label" data-val="custom" style="display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:10px; border:2px solid #1f2937; cursor:pointer; transition:border-color 0.15s; background:#0d1421;">
+          <input type="radio" name="tier" value="custom" style="margin-top:3px; accent-color:#10b981; flex-shrink:0;">
+          <div>
+            <div style="font-weight:500; font-size:0.88rem;">Custom</div>
+            <div style="font-size:0.78rem; color:#6b7280; margin-top:2px;">Pick tools individually from the full catalog</div>
+          </div>
+        </label>
+      </div>
+    `;
+    // Highlight selected on click
+    content.querySelectorAll('.ob-tier-label').forEach(lbl => {
+      lbl.addEventListener('click', () => {
+        content.querySelectorAll('.ob-tier-label').forEach(l => l.style.borderColor = '#1f2937');
+        lbl.style.borderColor = '#10b981';
+        obData.tier = lbl.dataset.val;
+      });
+    });
+    // Restore existing selection
+    if (obData.tier) {
+      const existing = content.querySelector(`.ob-tier-label[data-val="${obData.tier}"]`);
+      if (existing) { existing.style.borderColor = '#10b981'; existing.querySelector('input').checked = true; }
+    }
+    return;
+  }
+
+  if (step === 'custom-tools') {
+    nextBtn.textContent = 'Next →';
+    const cats = {};
+    Object.values(obCatalog.tools || {}).forEach(t => {
+      if (!cats[t.category]) cats[t.category] = [];
+      cats[t.category].push(t);
+    });
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Select tools to enable</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:14px;">You can reconfigure these any time via Setup.</p>
+      <div style="max-height:340px; overflow-y:auto; padding-right:4px;">
+        ${Object.entries(cats).map(([cat, tools]) => `
+          <div style="margin-bottom:14px;">
+            <div style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#4b5563; margin-bottom:6px;">${esc(cat)}</div>
+            ${tools.map(t => `
+              <label style="display:flex; align-items:center; gap:8px; padding:5px 0; cursor:pointer; font-size:0.85rem;">
+                <input type="checkbox" value="${t.id}" class="ob-tool-check" style="accent-color:#10b981;" ${obData.selectedTools.includes(t.id) ? 'checked' : ''}>
+                <span>${esc(t.display)}</span>
+                ${t.free ? '<span style="font-size:0.7rem; padding:1px 6px; border-radius:4px; background:#064e3b; color:#10b981;">free</span>' : ''}
+              </label>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  if (step === 'ai-key') {
+    nextBtn.textContent = 'Next →';
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">AI API Key</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:20px;">Required for all agent functionality. Set this to your Anthropic API key.</p>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px;">AI_API_KEY <span style="color:#ef4444;">*</span></label>
+          <input id="ob-AI_API_KEY" type="password" placeholder="sk-ant-api03-…"
+            class="cred-input"
+            style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem; font-family:'JetBrains Mono',monospace;"
+            value="${esc(obData.values['AI_API_KEY'] || '')}">
+          <p style="font-size:0.72rem; color:#4b5563; margin-top:4px;">Obtain from console.anthropic.com → API Keys</p>
+        </div>
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px;">MCP_MODE</label>
+          <select id="ob-MCP_MODE"
+            style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem;">
+            <option value="mock" ${(obData.values['MCP_MODE'] || 'mock') === 'mock' ? 'selected' : ''}>mock — use realistic sample data (no credentials needed)</option>
+            <option value="live" ${obData.values['MCP_MODE'] === 'live' ? 'selected' : ''}>live — connect to real MCP servers</option>
+          </select>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (step && step.startsWith('tool:')) {
+    const toolId   = step.slice(5);
+    const tool     = (obCatalog.tools || {})[toolId];
+    if (!tool) { onboardNext(); return; }
+
+    const toolsWithCreds = getToolsWithCreds();
+    const idx = toolsWithCreds.findIndex(t => t.id === toolId);
+    nextBtn.textContent = (idx < toolsWithCreds.length - 1) ? 'Next →' : 'Finish →';
+
+    content.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <h3 style="font-weight:600; font-size:0.95rem;">${esc(tool.display)}</h3>
+        <span style="font-size:0.72rem; padding:2px 8px; border-radius:4px; background:#1e3a5f; color:#60a5fa;">${esc(tool.category)}</span>
+        ${tool.free ? '<span style="font-size:0.72rem; padding:2px 8px; border-radius:4px; background:#064e3b; color:#10b981;">free</span>' : ''}
+      </div>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:4px;">${esc(tool.description)}</p>
+      ${tool.doc_url ? `<a href="${esc(tool.doc_url)}" target="_blank" rel="noopener" style="font-size:0.75rem; color:#10b981; text-decoration:underline;">↗ Documentation</a>` : ''}
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
+        ${(tool.credentials || []).map(c => `
+          <div>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:500; margin-bottom:4px;">
+              ${esc(c.label)}
+              ${!c.optional ? '<span style="color:#ef4444;">*</span>' : '<span style="color:#4b5563; font-size:0.7rem;">(optional)</span>'}
+            </label>
+            ${c.hint ? `<p style="font-size:0.72rem; color:#4b5563; margin-bottom:4px;">↳ ${esc(c.hint)}</p>` : ''}
+            <input id="ob-${esc(c.key)}" type="${c.secret ? 'password' : 'text'}" placeholder="${esc(c.key)}"
+              class="cred-input"
+              style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:0.85rem; font-family:'JetBrains Mono',monospace;"
+              value="${esc(obData.values[c.key] || '')}">
+          </div>
+        `).join('')}
+      </div>
+      <p style="font-size:0.72rem; color:#374151; margin-top:14px;">
+        Tool ${idx + 1} of ${toolsWithCreds.length}
+      </p>
+    `;
+    return;
+  }
+
+  if (step === 'summary') {
+    nextBtn.textContent = 'Apply & Close';
+    const envContent = buildEnvContent();
+    content.innerHTML = `
+      <h3 style="font-weight:600; font-size:0.95rem; margin-bottom:4px;">Configuration Ready</h3>
+      <p style="font-size:0.82rem; color:#6b7280; margin-bottom:14px;">Your <code style="font-family:monospace; color:#10b981;">.env</code> file is ready. Apply it to the server or download it.</p>
+      <div style="background:#0a0e17; border:1px solid #1f2937; border-radius:8px; padding:12px 14px; max-height:200px; overflow-y:auto; margin-bottom:16px;">
+        <pre style="font-size:0.73rem; font-family:'JetBrains Mono',monospace; color:#6b7280; white-space:pre-wrap; margin:0;">${esc(envContent.slice(0, 2500))}${envContent.length > 2500 ? '\n…' : ''}</pre>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="downloadEnv()" class="btn-ghost" style="flex:1;">↓ Download .env</button>
+        <button onclick="applyEnvToServer()" class="btn-primary" style="flex:1;">Apply to Server</button>
+      </div>
+      <p id="ob-apply-status" style="font-size:0.75rem; margin-top:10px; text-align:center; color:#6b7280;"></p>
+    `;
+  }
+}
+
+function updateObDots() {
+  const dots = qs('#onboard-dots');
+  dots.innerHTML = '';
+  obSteps.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i < obStepIdx ? ' done' : i === obStepIdx ? ' active' : '');
+    dots.appendChild(d);
+  });
+}
+
+function collectCurrentStep() {
+  const step = obSteps[obStepIdx];
+
+  if (step === 'ai-provider') {
+    const radio = document.querySelector('input[name="provider"]:checked');
+    if (radio) obData.chosenProvider = radio.value;
+  }
+
+  if (step === 'tier-select') {
+    const radio = document.querySelector('input[name="tier"]:checked');
+    if (radio) obData.tier = radio.value;
+  }
+
+  if (step === 'custom-tools') {
+    obData.selectedTools = Array.from(document.querySelectorAll('.ob-tool-check:checked')).map(c => c.value);
+  }
+
+  if (step === 'ai-key') {
+    const k = qs('#ob-AI_API_KEY');
+    const m = qs('#ob-MCP_MODE');
+    if (k && k.value) obData.values['AI_API_KEY'] = k.value;
+    if (m) obData.values['MCP_MODE'] = m.value;
+  }
+
+  if (step && step.startsWith('tool:')) {
+    const toolId = step.slice(5);
+    const tool   = (obCatalog.tools || {})[toolId];
+    (tool?.credentials || []).forEach(c => {
+      const inp = qs(`#ob-${c.key}`);
+      if (inp && inp.value.trim()) obData.values[c.key] = inp.value.trim();
+    });
+  }
+}
+
+function onboardNext() {
+  collectCurrentStep();
+
+  // Validate provider selection
+  if (obSteps[obStepIdx] === 'ai-provider' && !obData.chosenProvider) {
+    const radio = document.querySelector('input[name="provider"]:checked');
+    if (!radio) { alert('Please select an AI provider.'); return; }
+    obData.chosenProvider = radio.value;
+  }
+
+  // Validate tier selection
+  if (obSteps[obStepIdx] === 'tier-select' && !obData.tier) {
+    alert('Please select a deployment tier.');
+    return;
+  }
+
+  // Recompute full step list after tier is chosen
+  obSteps = computeObSteps();
+
+  if (obStepIdx >= obSteps.length - 1) {
+    // Last step — apply and close
+    applyEnvToServer().then(() => {
+      setTimeout(() => closeModal('modal-onboard'), 1800);
+    });
+    return;
+  }
+
+  obStepIdx++;
+  renderObStep();
+}
+
+function onboardBack() {
+  if (obStepIdx > 0) { obStepIdx--; renderObStep(); }
+}
+
+function buildEnvContent() {
+  const v = obData.values;
+  const lines = [
+    '# SOCPilot Environment Configuration',
+    `# Generated ${new Date().toISOString()}`,
+    '# Keep secret — never commit to git',
+    '',
+    '# AI Inference',
+    `AI_API_KEY=${v['AI_API_KEY'] || ''}`,
+    `MCP_MODE=${v['MCP_MODE'] || 'mock'}`,
+    '',
+    '# Tool Credentials',
+  ];
+  const skip = new Set(['AI_API_KEY', 'MCP_MODE']);
+  Object.entries(v).filter(([k]) => !skip.has(k)).forEach(([k, val]) => lines.push(`${k}=${val}`));
+  return lines.join('\n');
+}
+
+function downloadEnv() {
+  const content = buildEnvContent();
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = '.env'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function applyEnvToServer() {
+  const status = qs('#ob-apply-status');
+  if (status) status.textContent = 'Applying…';
+  try {
+    const r = await fetch('/onboard/env', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ values: obData.values }),
+    });
+    const data = await r.json();
+    if (status) status.textContent = `✓ Written to ${data.file} — restart server to activate`;
+  } catch (e) {
+    if (status) status.textContent = `Could not apply to server: ${e.message}. Use Download instead.`;
+  }
+}
+
+
+// ─── Modal helpers ────────────────────────────────────────────────────────────
+function showModal(id) {
+  const el = qs(`#${id}`);
+  el.style.display = 'flex';
+  // Small trick: force reflow so transition fires
+  el.offsetHeight;
+}
+
+function closeModal(id) {
+  qs(`#${id}`).style.display = 'none';
+}
+
+// Close modal on backdrop click
+document.addEventListener('click', (e) => {
+  ['modal-playbook', 'modal-report', 'modal-onboard'].forEach(id => {
+    const modal = qs(`#${id}`);
+    if (e.target === modal) closeModal(id);
+  });
+});
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ['modal-playbook', 'modal-report', 'modal-onboard'].forEach(closeModal);
+  }
+});
+
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function qs(sel) { return document.querySelector(sel); }
+
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+
+// ─── Provider instructions (shown inside onboarding wizard) ──────────────────
+function providerInstructions(provider) {
+  if (provider === 'openai') {
+    return `
+      <div style="font-weight:600; color:#60a5fa; margin-bottom:8px;">🔒 Local LLM — Fully Air-Gapped Setup</div>
+      <div style="color:#9ca3af; margin-bottom:10px;">Choose a local server, then follow its steps:</div>
+
+      <details style="margin-bottom:6px;">
+        <summary style="cursor:pointer; color:#e5e7eb; font-weight:500; padding:4px 0;">Ollama <span style="color:#10b981; font-size:0.72rem;">(recommended · easiest)</span></summary>
+        <div style="margin-top:8px; padding-left:12px; border-left:2px solid #1f2937; color:#9ca3af;">
+          <pre style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#6ee7b7; white-space:pre-wrap;"># 1. Install Ollama (macOS/Linux)
+brew install ollama        # macOS
+# or: curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. Start and pull a model with tool-calling support
+ollama serve
+ollama pull qwen2.5:7b    # best tool-calling (4.7 GB)
+# or: ollama pull llama3.2:3b   (lighter, 2 GB)
+# or: ollama pull mistral:7b    (7 GB)
+
+# 3. Add to your .env file
+AI_PROVIDER=openai
+AI_BASE_URL=http://localhost:11434/v1
+AI_MODEL=qwen2.5:7b
+AI_API_KEY=ollama</pre>
+        </div>
+      </details>
+
+      <details style="margin-bottom:6px;">
+        <summary style="cursor:pointer; color:#e5e7eb; font-weight:500; padding:4px 0;">LM Studio <span style="color:#6b7280; font-size:0.72rem;">(GUI · Windows/macOS/Linux)</span></summary>
+        <div style="margin-top:8px; padding-left:12px; border-left:2px solid #1f2937; color:#9ca3af;">
+          <ol style="margin-left:16px; font-size:0.78rem; line-height:1.9;">
+            <li>Download from <strong style="color:#60a5fa;">lmstudio.ai</strong> and install</li>
+            <li>Search &amp; download a model with tool-calling (e.g. <code style="color:#6ee7b7;">qwen2.5-7b</code>)</li>
+            <li>Go to <strong>Local Server</strong> tab → Start Server</li>
+            <li>Set in <code>.env</code>:<br>
+              <pre style="font-family:monospace; font-size:0.75rem; color:#6ee7b7; margin:4px 0;">AI_PROVIDER=openai
+AI_BASE_URL=http://localhost:1234/v1
+AI_MODEL=&lt;model-name-shown-in-lmstudio&gt;
+AI_API_KEY=lm-studio</pre>
+            </li>
+          </ol>
+        </div>
+      </details>
+
+      <details style="margin-bottom:6px;">
+        <summary style="cursor:pointer; color:#e5e7eb; font-weight:500; padding:4px 0;">vLLM <span style="color:#6b7280; font-size:0.72rem;">(GPU · production)</span></summary>
+        <div style="margin-top:8px; padding-left:12px; border-left:2px solid #1f2937; color:#9ca3af;">
+          <pre style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#6ee7b7; white-space:pre-wrap;">pip install vllm
+vllm serve Qwen/Qwen2.5-7B-Instruct \\
+     --port 8080 --enable-auto-tool-choice
+
+# .env
+AI_PROVIDER=openai
+AI_BASE_URL=http://localhost:8080/v1
+AI_MODEL=Qwen/Qwen2.5-7B-Instruct
+AI_API_KEY=vllm</pre>
+        </div>
+      </details>
+
+      <div style="margin-top:10px; padding:8px 10px; background:#1e3a5f; border-radius:6px; font-size:0.75rem; color:#93c5fd;">
+        💡 <strong>Recommended model for best tool-calling:</strong> <code>qwen2.5:7b</code> (Ollama)<br>
+        Requires a model that supports <em>function/tool calling</em> — check your model's docs.
+      </div>
+    `;
+  }
+
+  // Default: Anthropic
+  return `
+    <div style="font-weight:600; color:#10b981; margin-bottom:8px;">☁ Anthropic API Setup</div>
+    <ol style="margin-left:16px; font-size:0.8rem; line-height:2; color:#9ca3af;">
+      <li>Sign up at <strong style="color:#10b981;">console.anthropic.com</strong></li>
+      <li>Go to <strong>API Keys</strong> → <strong>Create Key</strong></li>
+      <li>Copy your key (starts with <code style="color:#6ee7b7;">sk-ant-api03-…</code>)</li>
+      <li>Add to your <code>.env</code> file:<br>
+        <pre style="font-family:monospace; font-size:0.75rem; color:#6ee7b7; margin:4px 0;">AI_PROVIDER=anthropic
+AI_API_KEY=sk-ant-api03-…
+AI_MODEL=claude-opus-4-6    # optional</pre>
+      </li>
+    </ol>
+    <div style="margin-top:10px; padding:8px 10px; background:#064e3b; border-radius:6px; font-size:0.75rem; color:#6ee7b7;">
+      💡 The default model is <code>claude-opus-4-6</code>. For faster/cheaper results use <code>claude-sonnet-4-6</code>.
+    </div>
+  `;
+}
+
+
+// ─── Test LLM connection (in onboarding wizard) ───────────────────────────────
+async function obTestConnection() {
+  const btn    = qs('#ob-test-btn');
+  const result = qs('#ob-test-result');
+  if (!btn || !result) return;
+  btn.textContent  = '↻ Testing…';
+  btn.disabled     = true;
+  result.textContent = '';
+  result.style.color = '#6b7280';
+  try {
+    const r    = await fetch('/health/llm');
+    const data = await r.json();
+    if (data.status === 'ok') {
+      result.textContent = `✓ Connected — ${data.model} responded in ${data.latency_ms} ms`;
+      result.style.color = '#10b981';
+    } else {
+      result.textContent = `✗ ${data.error || 'connection failed'}`;
+      result.style.color = '#ef4444';
+    }
+  } catch (e) {
+    result.textContent = `✗ Could not reach server: ${e.message}`;
+    result.style.color = '#ef4444';
+  } finally {
+    btn.textContent = '↻ Test Connection';
+    btn.disabled    = false;
+  }
+}
+
+
+// ─── Test LLM connection (sidebar button) ─────────────────────────────────────
+async function testLLMConnection() {
+  const btn = qs('#llm-test-btn');
+  const dot = qs('#llm-status-dot');
+  if (btn) { btn.textContent = '↻ Testing…'; btn.disabled = true; }
+  try {
+    const r    = await fetch('/health/llm');
+    const data = await r.json();
+    if (data.status === 'ok') {
+      dot.style.background = '#10b981';
+      qs('#llm-status-provider').textContent = data.provider;
+      qs('#llm-status-provider').style.color = '#10b981';
+      qs('#llm-status-model').textContent    = `${data.model} · ${data.latency_ms}ms`;
+      if (btn) btn.style.color = '#10b981';
+    } else {
+      dot.style.background = '#ef4444';
+      qs('#llm-status-provider').textContent = data.provider + ' ✗';
+      qs('#llm-status-provider').style.color = '#ef4444';
+      qs('#llm-status-model').textContent    = (data.error || '').slice(0, 50);
+      if (btn) btn.style.color = '#ef4444';
+    }
+  } catch {
+    dot.style.background = '#6b7280';
+    qs('#llm-status-provider').textContent = 'offline';
+  } finally {
+    if (btn) { btn.textContent = '↻ Test Connection'; btn.disabled = false; btn.style.color = ''; }
+  }
+}
+
+
+// ─── Health / mode check ──────────────────────────────────────────────────────
+async function loadHealthStatus() {
+  try {
+    const r    = await fetch('/health');
+    const data = await r.json();
+    const mode     = data.mode     || 'mock';
+    const provider = data.provider || 'anthropic';
+    const model    = data.model    || '';
+    qs('#mode-text').textContent   = `${provider} · ${mode}`;
+    qs('#footer-mode').textContent = mode;
+    if (mode === 'live') {
+      qs('#mode-badge').style.background = '#1e3a5f';
+      qs('#mode-badge').style.color      = '#60a5fa';
+      qs('#mode-dot').style.background   = '#3b82f6';
+    }
+    if (provider === 'openai') {
+      qs('#mode-badge').title = 'Running on local LLM (OpenAI-compatible) — air-gapped';
+    }
+    // Populate sidebar LLM status
+    qs('#llm-status-provider').textContent = provider;
+    qs('#llm-status-model').textContent    = model;
+  } catch { /* server not reachable yet */ }
+}
+
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async function init() {
+  connectWS();
+  await Promise.all([loadPlaybooks(), loadHealthStatus()]);
+})();
+</script>
+
+</body>
+</html>

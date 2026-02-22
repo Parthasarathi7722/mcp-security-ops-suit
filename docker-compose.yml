@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SOCPilot — Docker Compose
+#
+# Private-subnet deployment: all MCP tool calls stay on your network.
+# Only the AI inference request leaves the boundary.
+#
+# Usage:
+#   cp .env.example .env          # fill in credentials
+#   docker compose up -d          # start in background
+#   docker compose logs -f        # tail logs
+#   docker compose down           # stop and remove
+#
+# Environment:
+#   All credentials are injected from .env (never baked into the image).
+#   Set MCP_MODE=live in .env to enable live MCP routing.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  socpilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: socpilot:latest
+    container_name: socpilot
+
+    # ── Credentials ──────────────────────────────────────────────────────────
+    # All env vars from .env are injected; nothing is hardcoded in this file.
+    env_file:
+      - .env
+
+    # ── Port binding ─────────────────────────────────────────────────────────
+    # Bind to localhost only in production; use a reverse proxy (nginx/Caddy)
+    # for TLS termination and to expose over the internal network.
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    # ── Volumes ───────────────────────────────────────────────────────────────
+    volumes:
+      # MCP server config (read-only inside container)
+      - ./mcp_config.json:/app/mcp_config.json:ro
+      # Reports written by /report endpoint
+      - ./reports:/app/reports
+
+    # ── Health check ─────────────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # ── Restart policy ───────────────────────────────────────────────────────
+    restart: unless-stopped
+
+    # ── Logging ──────────────────────────────────────────────────────────────
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+    # ── Resource limits ───────────────────────────────────────────────────────
+    # Each npx/uvx MCP subprocess can consume 50–200 MB; reserve headroom.
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          memory: 256M
+
+    # ── Network ───────────────────────────────────────────────────────────────
+    networks:
+      - socpilot-net
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Optional: Nginx reverse proxy for TLS + path routing
+# Uncomment if you want TLS termination handled by Compose.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#  nginx:
+#    image: nginx:1.27-alpine
+#    container_name: socpilot-nginx
+#    ports:
+#      - "443:443"
+#    volumes:
+#      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./nginx/certs:/etc/nginx/certs:ro
+#    depends_on:
+#      socpilot:
+#        condition: service_healthy
+#    networks:
+#      - socpilot-net
+#    restart: unless-stopped
+
+
+networks:
+  socpilot-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
