@@ -73,6 +73,17 @@ MCP data is **untrusted input**. Security findings, log entries, and threat inte
 - Set **resource limits** (CPU, memory) to prevent abuse
 - Never expose MCP servers to the public internet
 
+## Session Data
+
+SOCPilot persists WebSocket conversation history to `sessions/<session_id>.json`. These files may contain security findings, tool results, and investigation context.
+
+### Recommendations
+
+- Add `sessions/` to `.gitignore` (it is by default in this repo)
+- Restrict file system permissions: `chmod 700 sessions/`
+- In production, consider setting `REPORTS_DIR` and session storage to a volume with encryption at rest
+- Session files are deleted when the user clicks "Clear History" in the browser UI or calls `DELETE /sessions/{id}`
+
 ## Data Classification
 
 ### What MCP Servers Can Access

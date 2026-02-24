@@ -1,10 +1,21 @@
+# Credentials
 .env
 .env.backup
 .env.local
 *.secret
 *.key
 *.pem
+
+# Generated data — may contain sensitive investigation findings
+sessions/
+reports/
+
+# Dependencies and build
 node_modules/
-.DS_Store
 .venv/
 __pycache__/
+*.pyc
+
+# OS / IDE
+.DS_Store
+.idea/

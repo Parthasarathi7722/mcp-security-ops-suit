@@ -1,6 +1,15 @@
 # Playbook 05: Secret Leak Response
 
-> Rapid response workflow when a secret (API key, token, password) is detected in source code, logs, or public repositories.
+> Rapid response workflow when a secret (API key, token, password) is detected in source code, logs, or public repositories. SOCPilot scopes the exposure, coordinates rotation approval, checks for misuse, and creates the incident record.
+
+## How to Invoke
+
+| Method | Command |
+|---|---|
+| Browser UI | Sidebar → **Secret Leak** → enter repo, service, or secret type |
+| CLI | `python agent.py --playbook secret-leak-response "AWS key in payments-api"` |
+| API | `POST /playbook` with `{"playbook": "secret-leak-response", "target": "..."}` |
+| Demo | Works in demo mode — shows realistic 6-tool-call scenario (Vault Radar + GHAS + Vault + Okta + Jira + Slack) |
 
 ## MCP Servers Required
 

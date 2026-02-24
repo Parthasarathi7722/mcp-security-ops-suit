@@ -771,7 +771,10 @@ async def run_investigation(
     AI_PROVIDER=openai              → calls any OpenAI-compatible local server
                                       (Ollama, LM Studio, vLLM — fully air-gapped)
     """
-    if cfg.provider == "openai":
+    if cfg.provider == "demo":
+        async for event in _run_demo(query, history=history, pool=pool):
+            yield event
+    elif cfg.provider == "openai":
         async for event in _run_openai(query, history=history, pool=pool):
             yield event
     else:
@@ -1001,6 +1004,776 @@ async def _run_openai(
 
     except Exception as exc:
         yield {"type": "error", "message": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEMO MODE  (AI_PROVIDER=demo)
+# Zero credentials — pre-recorded realistic investigation scripts.
+# Streams text and tool events with realistic timing so every UI feature
+# (markdown rendering, tool call cards, tool result blocks) can be tested
+# without any API key or MCP credentials.
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _demo_text(text: str):
+    """Stream text in small chunks simulating LLM token output."""
+    i = 0
+    while i < len(text):
+        size = 4 + (i * 7 % 5)   # 4–8 chars, deterministic variation
+        chunk = text[i:i + size]
+        yield {"type": "text", "text": chunk}
+        i += size
+        # Slightly longer pause at paragraph / section breaks
+        await asyncio.sleep(0.045 if chunk.endswith(("\n\n", "---\n", ":\n")) else 0.013)
+
+
+async def _demo_tool(name: str, inputs: dict[str, Any], result: str):
+    """Yield tool_call, simulate latency, then yield tool_result."""
+    yield {"type": "tool_call", "name": name, "inputs": inputs}
+    await asyncio.sleep(0.55 + len(result) / 3000)
+    yield {"type": "tool_result", "name": name, "content": result}
+
+
+# ── Scenario helpers ──────────────────────────────────────────────────────────
+
+async def _demo_vuln_triage(query: str):
+    import re as _re
+    m = _re.search(r'CVE-\d{4}-\d{4,}', query, _re.IGNORECASE)
+    cve    = m.group(0).upper() if m else "CVE-2024-50623"
+    target = "payments-api"
+
+    async for ev in _demo_text(
+        f"## Vulnerability Triage — {cve}\n\n"
+        "Running a full assessment across your security stack: active exploitation "
+        "status, affected repositories, reachability, and detection coverage.\n\n"
+        f"**→ Checking GreyNoise for active exploitation of {cve}...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_greynoise",
+        {"query": cve, "query_type": "cve"},
+        f"GreyNoise — {cve}:\n"
+        "  ACTIVELY EXPLOITED\n"
+        "  2,400+ IPs scanning for this CVE in last 24 h\n"
+        "  First exploitation: 2024-10-28 | Trend: +300% this week\n"
+        "  Linked campaigns: Cl0p ransomware, Scattered Spider\n"
+        "  [Demo — set GREYNOISE_API_KEY for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        f"\n**→ Pulling GHAS/Dependabot alerts for {target}...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "get_ghas_alerts",
+        {"repo": f"acme-corp/{target}", "alert_type": "dependabot",
+         "severity": "critical", "cve_id": cve},
+        f"GHAS alerts — acme-corp/{target}:\n"
+        f"  Dependabot: 12 alerts (2 critical, 5 high)\n"
+        f"  → {cve} FOUND in direct dependency com.cleo:harmony:5.6.0\n"
+        "  Code scanning: 3 alerts (SQL injection, path traversal)\n"
+        "  Secret scanning: 1 exposed token — rotation required\n"
+        "  [Demo — set GITHUB_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Snyk reachability analysis...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_snyk",
+        {"repo": f"acme-corp/{target}", "cve_id": cve, "check_reachability": True},
+        f"Snyk SCA — acme-corp/{target}:\n"
+        f"  CRITICAL: {cve} in com.cleo:harmony:5.6.0 (direct dep)\n"
+        "  Reachability: CONFIRMED — vulnerable function called in "
+        "FileUploadController.java:L89\n"
+        "  Fix: upgrade to com.cleo:harmony:5.8.0\n"
+        "  [Demo — set SNYK_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "search_detections",
+        {"query": cve, "rule_type": "all"},
+        f"Security Detections — '{cve}':\n"
+        "  7 rules found\n"
+        "  Sigma (3): file-upload-exploit.yml, webshell-detection.yml, lateral-movement.yml\n"
+        "  ESCU (2): remote-code-execution-via-cleo.xml\n"
+        "  ATT&CK: T1190 (Initial Access), T1059 (Execution)\n"
+        "  [No auth required — open-source rule database]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Risk Assessment\n\n"
+        "| Factor | Value |\n"
+        "|---|---|\n"
+        "| CVSS Score | **9.8 (Critical)** |\n"
+        f"| Active Exploitation | ✅ Confirmed — 2,400+ scanner IPs |\n"
+        f"| Affected repo | `acme-corp/{target}` |\n"
+        "| Dependency | `com.cleo:harmony:5.6.0` (direct) |\n"
+        "| Reachable code path | ✅ Confirmed via Snyk |\n"
+        "| Detection rules | ✅ 7 rules available |\n"
+        "| Threat actors | Cl0p ransomware, Scattered Spider |\n\n"
+        "## 🔴 Priority: **P1 — Immediate Action Required**\n\n"
+        "The vulnerability is **actively exploited** by ransomware groups, present in a "
+        "**direct dependency**, and the vulnerable code path is **confirmed reachable** "
+        "in production.\n\n"
+        "### Recommended Actions\n\n"
+        "**Immediate (0–4 h):**\n"
+        f"- Upgrade `com.cleo:harmony` → `5.8.0` in `{target}`\n"
+        "- Block known scanner IPs (185.220.101.34, 45.142.212.55) at WAF\n"
+        "- Rotate the exposed GitHub token found in secret scanning\n\n"
+        "**Short-term (24–48 h):**\n"
+        "- Deploy Sigma rules to Sentinel and Splunk (7 rules available)\n"
+        "- Run Trivy scan on all container images using this dependency\n\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "create_jira_ticket",
+        {"project": "SEC",
+         "summary": f"P1: {cve} actively exploited in {target} — patch required",
+         "description": "Full findings attached.", "priority": "Highest",
+         "issue_type": "Security", "labels": ["p1", "vuln-triage", cve.lower()]},
+        "Jira ticket created:\n"
+        "  ID: SEC-4521\n"
+        f"  'P1: {cve} actively exploited in {target}'\n"
+        "  Priority: Highest | SLA: 4 h\n"
+        "  URL: https://your-org.atlassian.net/browse/SEC-4521\n"
+        "  [Demo — set JIRA_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "post_slack",
+        {"channel": "#vuln-triage",
+         "message": f"🔴 P1: {cve} actively exploited — {target} affected. "
+                    "Patch within 4 h. Jira: SEC-4521",
+         "urgency": "urgent"},
+        "Slack → #vuln-triage:\n"
+        "  Message delivered | @here notification sent\n"
+        "  Thread created for follow-up\n"
+        "  [Demo — set SLACK_BOT_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n**Jira SEC-4521 created · Slack alert posted to #vuln-triage ✓**\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _demo_incident(query: str):
+    async for ev in _demo_text(
+        "## Incident Response\n\n"
+        "Correlating events across SIEM, enriching IOCs, checking identity "
+        "impact, and scoping blast radius.\n\n"
+        "**→ Querying Sentinel for related events (last 24 h)...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_sentinel",
+        {"query": "SecurityEvent | where EventID in (4624,4625,4648) | "
+                  "summarize count() by IpAddress, Account | order by count_ desc",
+         "time_range": "24h"},
+        "Sentinel KQL — 24h window:\n"
+        "  47 matching events | 3 high-severity incidents opened\n"
+        "  Top source IPs: 185.220.101.34 (TOR exit), 45.142.212.55\n"
+        "  Anomaly: 23 failed auth → 1 success at 02:34 UTC from RU\n"
+        "  Affected resources: payments-api, auth-service\n"
+        "  [Demo — set SENTINEL credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_splunk",
+        {"search": "index=security sourcetype=win_security EventCode=4648 "
+                   "| stats count by src_ip, user | sort -count",
+         "time_range": "-24h@h"},
+        "Splunk SPL — 24h window:\n"
+        "  156 events | peak 02:34 UTC | index=security host=prod-web-01\n"
+        "  Notable: brute-force pattern then lateral movement to db-server-02\n"
+        "  [Demo — set SPLUNK_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Checking GreyNoise for attacker IP reputation...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_greynoise",
+        {"query": "185.220.101.34", "query_type": "ip"},
+        "GreyNoise — 185.220.101.34:\n"
+        "  Classification: MALICIOUS | Tags: TOR exit node, Mass-scanner\n"
+        "  Last seen: 2 h ago | Targeting: SSH, RDP, web login forms\n"
+        "  RIOT: No — not a known benign business IP\n"
+        "  [Demo — set GREYNOISE_API_KEY for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Checking Okta for affected user sessions...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "manage_okta",
+        {"action": "get_user", "user": "j.smith@acme.com"},
+        "Okta — j.smith@acme.com:\n"
+        "  Status: Active | Last login: 02:31 UTC (ANOMALOUS)\n"
+        "  Active sessions: 3 (US, RU, NG) — impossible travel detected\n"
+        "  MFA: SMS push only (not FIDO2/hardware key)\n"
+        "  Groups: engineering, payments-team | Apps: 23 assigned\n"
+        "  [Demo — set OKTA_ORG_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Incident Assessment\n\n"
+        "| Factor | Status |\n"
+        "|---|---|\n"
+        "| Source IP | 185.220.101.34 — TOR exit, malicious |\n"
+        "| Authentication | Credential stuffing → 1 successful login |\n"
+        "| Affected user | j.smith@acme.com (payments-team) |\n"
+        "| Impossible travel | ✅ Detected (US → RU → NG within 2 h) |\n"
+        "| Blast radius | payments-api, auth-service, 23 apps accessible |\n\n"
+        "## Severity: **P1 — Active Compromise**\n\n"
+        "A compromised account with access to `payments-api` has an active session "
+        "from a TOR exit node. Immediate containment required.\n\n"
+        "### Containment Steps _(awaiting analyst approval)_\n\n"
+        "1. Suspend `j.smith@acme.com` Okta session immediately\n"
+        "2. Force password reset + re-enroll with FIDO2 key\n"
+        "3. Block 185.220.101.34 at WAF and firewall\n"
+        "4. Review all actions by j.smith in the last 48 h\n"
+        "5. Notify j.smith through out-of-band channel (phone)\n\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "create_jira_ticket",
+        {"project": "SEC",
+         "summary": "P1 IR: Compromised account j.smith — TOR login to payments-api",
+         "description": "Active session from TOR exit. Impossible travel confirmed.",
+         "priority": "Highest", "issue_type": "Incident"},
+        "Jira ticket created:\n"
+        "  ID: SEC-4522\n"
+        "  'P1 IR: Compromised account j.smith — TOR login to payments-api'\n"
+        "  Priority: Highest | SLA: Immediate\n"
+        "  [Demo — set JIRA_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "post_slack",
+        {"channel": "#security-incidents",
+         "message": "🚨 P1 INCIDENT: Compromised account (j.smith) — "
+                    "TOR login to payments-api. Containment steps in SEC-4522.",
+         "urgency": "urgent"},
+        "Slack → #security-incidents:\n"
+        "  Message delivered | @here notification sent\n"
+        "  [Demo — set SLACK_BOT_TOKEN for live data]",
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _demo_default(query: str):
+    async for ev in _demo_text(
+        "## Security Investigation\n\n"
+        "Running a multi-source investigation across your security stack.\n\n"
+        "**→ Querying SIEM for relevant events...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_sentinel",
+        {"query": "SecurityAlert | where TimeGenerated > ago(24h) | "
+                  "summarize count() by AlertName, Severity",
+         "time_range": "24h"},
+        "Sentinel — 24h window:\n"
+        "  47 security alerts | 3 high | 12 medium\n"
+        "  Top alert: Unusual network scanning from internal host\n"
+        "  Affected: prod-web-01, db-server-02\n"
+        "  [Demo — set SENTINEL credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_greynoise",
+        {"query": "185.220.101.34", "query_type": "ip"},
+        "GreyNoise — 185.220.101.34:\n"
+        "  Classification: MALICIOUS | Tags: TOR exit node\n"
+        "  Last seen: 2 h ago | RIOT: No\n"
+        "  [Demo — set GREYNOISE_API_KEY for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_opencti",
+        {"query": "185.220.101.34", "type": "indicator"},
+        "OpenCTI — '185.220.101.34':\n"
+        "  3 threat actor matches | Primary: Cl0p (confidence 85%)\n"
+        "  Campaigns: MOVEit exploitation, Cleo mass exploitation\n"
+        "  MITRE: T1190, T1486 | IOCs: 47 IPs, 12 domains\n"
+        "  [Demo — set OPENCTI_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Findings Summary\n\n"
+        "Based on the multi-source analysis:\n\n"
+        "- **SIEM**: 47 alerts in 24 h, 3 high-severity incidents involving "
+        "`prod-web-01` and `db-server-02`\n"
+        "- **Threat Intel**: Source IP 185.220.101.34 is a known malicious TOR "
+        "exit node linked to Cl0p ransomware campaigns\n"
+        "- **Recommendation**: Investigate the internal host generating scan "
+        "traffic and review firewall egress rules\n\n"
+        "### Next Steps\n\n"
+        "1. Run the **Incident Response** playbook if a compromise is confirmed\n"
+        "2. Deploy the Sigma rules identified in the Security Detections database\n"
+        "3. Review cloud posture with the **Cloud Posture Review** playbook\n\n"
+        "_This is a demo response. Set `AI_PROVIDER=anthropic` and `AI_API_KEY` "
+        "for live AI-powered investigations._\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 1}
+
+
+async def _demo_threat_hunt(query: str):
+    async for ev in _demo_text(
+        "## Threat Hunt\n\n"
+        "Searching for attacker TTPs across detection libraries, SIEM logs, "
+        "and threat intelligence sources.\n\n"
+        "**→ Searching Security Detections for matching rules...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "search_detections",
+        {"query": query[:60], "rule_type": "all"},
+        "Security Detections:\n"
+        "  12 rules matched\n"
+        "  Sigma (6): T1190-exploit-public.yml, lateral-movement-smb.yml,\n"
+        "    rdp-bruteforce.yml, dns-tunneling.yml, process-injection.yml\n"
+        "  ESCU (3): bruteforce-lockout.xml, exfil-via-dns.xml, cred-dump-lsass.xml\n"
+        "  KQL (3): AzureSentinel detection rules\n"
+        "  ATT&CK coverage: T1190, T1078, T1021, T1071, T1055, T1003\n"
+        "  [No auth required — open-source rule database]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Running KQL hunt against Sentinel (last 7 days)...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_sentinel",
+        {"query": "SecurityEvent | where TimeGenerated > ago(7d) | "
+                  "where EventID in (4624,4625,4648) | "
+                  "summarize count() by Account, Computer | where count_ > 100",
+         "time_range": "7d"},
+        "Sentinel KQL Hunt — 7-day window:\n"
+        "  Suspicious authentication patterns:\n"
+        "  svc-backup: 5,421 logins — anomalous spike vs 30-day baseline\n"
+        "  admin@acme.com: 312 failed logins from 14 IPs — brute-force pattern\n"
+        "  WORKSTATION-07 → DC-01: 89 lateral movement events via SMB\n"
+        "  [Demo — set SENTINEL credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Running SPL hunt against Splunk...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_splunk",
+        {"query": "index=wineventlog EventCode=4688 | stats count by "
+                  "ParentProcessName, ProcessName | where count > 50 | sort -count",
+         "earliest": "-7d"},
+        "Splunk SPL Hunt — 7-day window:\n"
+        "  Suspicious process spawning:\n"
+        "  powershell.exe → cmd.exe (1,203 events) — possible C2\n"
+        "  winword.exe → powershell.exe (44 events) — macro execution\n"
+        "  svchost.exe → rundll32.exe (22 events) — DLL side-loading\n"
+        "  [Demo — set SPLUNK_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_opencti",
+        {"query": "lateral movement smb T1021", "type": "indicator"},
+        "OpenCTI — Threat Intelligence:\n"
+        "  3 active campaigns using SMB lateral movement\n"
+        "  Primary: Cl0p (confidence 78%) | Secondary: APT41\n"
+        "  Related IOCs: 18 IPs, 7 domains, 4 hashes\n"
+        "  TTP overlap: T1021.002, T1078, T1003 — matches hunt findings\n"
+        "  [Demo — set OPENCTI_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Hunt Findings\n\n"
+        "| Finding | Severity | ATT&CK |\n"
+        "|---|---|---|\n"
+        "| svc-backup anomalous login spike | **High** | T1078 — Valid Accounts |\n"
+        "| Brute-force against admin@acme.com | **High** | T1110 — Brute Force |\n"
+        "| Lateral movement WORKSTATION-07→DC-01 | **Critical** | T1021 — Remote Services |\n"
+        "| Suspicious macro → PowerShell execution | **Medium** | T1059 — Execution |\n\n"
+        "## Detection Gaps to Close\n\n"
+        "- No alerting on `svc-backup` authentication anomalies\n"
+        "- No detection for Office macro → PowerShell spawning\n"
+        "- SMB lateral movement alert threshold too high (fires at >500 events)\n\n"
+        "### Recommended Actions\n\n"
+        "1. **Immediate**: Investigate WORKSTATION-07 for C2 implant\n"
+        "2. **Deploy** the 6 Sigma rules to Sentinel and Splunk\n"
+        "3. **Tune** SMB alert threshold to 50 events/h\n"
+        "4. **Review** svc-backup service account — disable if not needed\n\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _demo_compliance(query: str):
+    import re as _re
+    m = _re.search(r'(soc.?2|iso.?27001|pci.?dss|hipaa|aws|azure|gcp|prod)', query, _re.IGNORECASE)
+    target = m.group(0) if m else "aws-production"
+
+    async for ev in _demo_text(
+        "## Compliance Audit\n\n"
+        f"Running a full compliance and posture assessment for `{target}`.\n\n"
+        "**→ Checking Drata compliance posture...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_drata",
+        {"scope": target},
+        "Drata Compliance:\n"
+        "  SOC 2 Type II: 84% controls passing (16 failing)\n"
+        "  Failing controls:\n"
+        "    CC6.1 — MFA not enforced for 3 service accounts\n"
+        "    CC7.2 — No automated vulnerability scanning on schedule\n"
+        "    CC9.2 — Vendor risk assessment overdue (12 vendors)\n"
+        "  ISO 27001: 91% — 4 gaps in A.12.6 (technical vulnerability)\n"
+        "  [Demo — set DRATA_API_KEY for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Running Prowler cloud posture checks...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "run_prowler",
+        {"provider": "aws", "services": ["iam", "s3", "ec2", "rds"],
+         "compliance": "cis_aws_foundations_benchmark"},
+        "Prowler — AWS CIS Foundations:\n"
+        "  Total checks: 247 | Pass: 198 | FAIL: 49\n"
+        "  CRITICAL (8): root-mfa-disabled, s3-public-access (3),\n"
+        "    rds-public-access (2), sg-0.0.0.0-443, iam-root-access-key\n"
+        "  HIGH (19): iam-password-policy, cloudtrail-kms, vpc-flow-logs-disabled...\n"
+        "  [Demo — set AWS credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "get_ghas_alerts",
+        {"repo": "acme-corp/all", "alert_type": "code_scanning"},
+        "GHAS Code Scanning — All Repos:\n"
+        "  19 open alerts | 3 critical, 8 high, 8 medium\n"
+        "  Critical: SQL injection (api/db.py:L47), path traversal (utils/files.py:L203)\n"
+        "  Secret scanning: 2 exposed tokens (AWS key, Slack bot token)\n"
+        "  Code coverage: 62% — below 80% policy threshold\n"
+        "  [Demo — set GITHUB_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_vault_radar",
+        {"scope": "all-repos"},
+        "Vault Radar — Secret Scanning:\n"
+        "  4 active findings across 3 repositories\n"
+        "  HIGH: AWS_ACCESS_KEY_ID in acme-corp/legacy-api (committed 14 days ago)\n"
+        "  HIGH: SLACK_BOT_TOKEN in acme-corp/data-pipeline\n"
+        "  MEDIUM: Generic API key pattern in acme-corp/docs\n"
+        "  Recommended: rotate all 4 secrets immediately\n"
+        "  [Demo — set VAULT_ADDR for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Compliance Gap Report\n\n"
+        f"**Environment:** `{target}` | **Date:** 2026-02-24\n\n"
+        "| Category | Status | Gaps |\n"
+        "|---|---|---|\n"
+        "| SOC 2 Type II | 🟡 84% | 16 failing controls |\n"
+        "| CIS AWS Foundations | 🔴 80% | 49 findings (8 critical) |\n"
+        "| Secret Management | 🔴 FAIL | 4 exposed secrets |\n"
+        "| Code Security | 🟡 62% coverage | 19 open GHAS alerts |\n\n"
+        "## Prioritised Remediation\n\n"
+        "**P0 — Rotate immediately:**\n"
+        "- AWS_ACCESS_KEY_ID and SLACK_BOT_TOKEN (exposed in git)\n\n"
+        "**P1 — Fix within 24 h:**\n"
+        "- Enable MFA on 3 service accounts (CC6.1 violation)\n"
+        "- Remove public access from 3 S3 buckets\n"
+        "- Disable public RDS access on 2 instances\n\n"
+        "**P2 — Fix within 1 week:**\n"
+        "- Enable CloudTrail KMS encryption\n"
+        "- Enable VPC flow logs in all regions\n"
+        "- Schedule automated vulnerability scanning\n\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _demo_secret_leak(query: str):
+    async for ev in _demo_text(
+        "## Secret Leak Response\n\n"
+        "Scoping the exposure, identifying all affected systems, "
+        "and coordinating credential rotation.\n\n"
+        "**→ Checking Vault Radar for exposure scope...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_vault_radar",
+        {"scope": "full-scan"},
+        "Vault Radar — Exposure Report:\n"
+        "  CRITICAL: AWS_ACCESS_KEY_ID (AKIA...) committed to acme-corp/payments-api\n"
+        "  First detected: 2026-02-23 14:22 UTC (26 hours ago)\n"
+        "  Risk score: 98/100 — active credentials, visible in commit history\n"
+        "  Additional exposures: same key in 2 CI/CD pipeline logs\n"
+        "  [Demo — set VAULT_ADDR for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Checking GHAS secret scanning for additional exposures...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "get_ghas_alerts",
+        {"alert_type": "secret_scanning", "state": "open"},
+        "GHAS Secret Scanning — All Repos:\n"
+        "  3 open secret alerts\n"
+        "  acme-corp/payments-api: AWS key (confirmed match)\n"
+        "  acme-corp/data-pipeline: Slack bot token\n"
+        "  acme-corp/legacy-api: Generic API key (40 days exposed)\n"
+        "  [Demo — set GITHUB_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "rotate_vault_secret",
+        {"path": "aws/payments-api/access-key", "flag_approval": True},
+        "Vault — Secret Rotation:\n"
+        "  ⚠️ APPROVAL REQUIRED before rotation executes\n"
+        "  Current: akia-redacted-key (created 2025-09-12)\n"
+        "  Rotation plan: generate new IAM key → update Vault → redeploy secrets\n"
+        "  Estimated downtime: 0 (blue/green rotation supported)\n"
+        "  Awaiting approval from: @security-on-call, @infra-lead\n"
+        "  [Demo — set VAULT_ADDR for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "get_okta_user",
+        {"query": "svc-payments", "check_sessions": True},
+        "Okta — Service Account Activity:\n"
+        "  svc-payments@acme.com — last auth: 2026-02-24 08:11 UTC\n"
+        "  Active sessions: 0 (API key auth, not OIDC)\n"
+        "  IAM key used in 14 API calls in last 24 h\n"
+        "  Most sensitive: s3:GetObject on payments-archive bucket\n"
+        "  No evidence of unauthorized access detected\n"
+        "  [Demo — set OKTA credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "create_jira_ticket",
+        {"project": "SEC",
+         "summary": "P1: AWS key exposed in payments-api — rotate immediately",
+         "issue_type": "Security", "priority": "Highest",
+         "labels": ["secret-leak", "p1", "aws"]},
+        "Jira ticket created:\n"
+        "  ID: SEC-4522\n"
+        "  'P1: AWS key exposed in payments-api — rotate immediately'\n"
+        "  Priority: Highest | SLA: 4 h | Assignee: @security-on-call\n"
+        "  [Demo — set JIRA_URL for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "post_slack",
+        {"channel": "#security-alerts",
+         "message": "🔴 SECRET LEAK: AWS key exposed in payments-api (26 h). "
+                    "Rotation pending approval. Jira: SEC-4522",
+         "urgency": "urgent"},
+        "Slack → #security-alerts:\n"
+        "  Message delivered | @security-team notified\n"
+        "  [Demo — set SLACK_BOT_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Secret Leak Summary\n\n"
+        "| Item | Status |\n"
+        "|---|---|\n"
+        "| Exposed credential | AWS_ACCESS_KEY_ID |\n"
+        "| Exposure duration | 26 hours |\n"
+        "| Additional repos affected | 2 |\n"
+        "| Unauthorized usage | None detected |\n"
+        "| Rotation status | **⚠️ Pending approval** |\n"
+        "| Jira ticket | SEC-4522 (P1) |\n\n"
+        "### Immediate Actions Required\n\n"
+        "1. **Approve rotation** in Vault (SEC-4522 comment thread)\n"
+        "2. **Revoke** the key directly in AWS IAM Console — don't wait for rotation\n"
+        "3. **Audit** CloudTrail for any API calls using this key\n"
+        "4. **Clean** git history with `git filter-repo` to remove the committed key\n\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _demo_cloud_posture(query: str):
+    async for ev in _demo_text(
+        "## Cloud Posture Review\n\n"
+        "Running a comprehensive cloud security assessment: configuration drift, "
+        "WAF analytics, SIEM cloud events, and secrets hygiene.\n\n"
+        "**→ Running Prowler cloud posture checks...**\n"
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "run_prowler",
+        {"provider": "aws", "services": ["iam", "s3", "ec2", "rds", "lambda"],
+         "compliance": "cis_aws_foundations_benchmark"},
+        "Prowler — AWS (us-east-1 + us-west-2):\n"
+        "  Total: 312 checks | Pass: 257 | FAIL: 55\n"
+        "  CRITICAL (6):\n"
+        "    root-account-mfa-disabled\n"
+        "    s3-bucket-public-read (payments-archive)\n"
+        "    ec2-sg-unrestricted-ssh (sg-0a1b2c3d)\n"
+        "    rds-public-access (db-prod-mysql)\n"
+        "    iam-root-access-key-active\n"
+        "    lambda-function-public (payments-webhook)\n"
+        "  [Demo — set AWS credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text("\n**→ Querying Cloudflare WAF events (last 24 h)...**\n"):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_cloudflare",
+        {"query": "security_events", "time_range": "24h"},
+        "Cloudflare WAF — 24h:\n"
+        "  Total requests: 4.2M | Blocked: 18,240 (0.43%)\n"
+        "  Top threats: SQLi (6,120), XSS (4,890), LFI (3,201)\n"
+        "  Bot traffic: 38% | Verified bots: 12% | Unverified: 26%\n"
+        "  DDoS: No active attack | Peak: 12K req/s at 03:14 UTC\n"
+        "  [Demo — set CLOUDFLARE_API_TOKEN for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "query_sentinel",
+        {"query": "AzureActivity | where ActivityStatusValue == 'Failed' | "
+                  "summarize count() by Caller, OperationNameValue | top 10 by count_",
+         "time_range": "24h"},
+        "Sentinel — Cloud Activity Anomalies:\n"
+        "  terraform@acme.com: 847 failed API calls (unusual spike)\n"
+        "  unknown-svc: 234 failed S3 PutObject (access denied)\n"
+        "  Root account: 3 direct console logins (policy violation)\n"
+        "  [Demo — set SENTINEL credentials for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_tool(
+        "check_vault",
+        {"path": "secret/", "check_ttl": True},
+        "Vault — Secrets Hygiene:\n"
+        "  Total secrets: 184 | Expiring <30d: 23 | Expired: 7\n"
+        "  Orphaned secrets (no app reference): 31\n"
+        "  Secrets without rotation policy: 48\n"
+        "  Last audit: 47 days ago (policy: monthly)\n"
+        "  [Demo — set VAULT_ADDR for live data]",
+    ):
+        yield ev
+
+    async for ev in _demo_text(
+        "\n---\n\n"
+        "## Cloud Posture Summary\n\n"
+        "| Domain | Score | Critical Findings |\n"
+        "|---|---|---|\n"
+        "| AWS Configuration | 82% | 6 critical misconfigs |\n"
+        "| WAF / Perimeter | 94% | No active attack |\n"
+        "| Cloud Activity | 🟡 Review | Terraform anomaly + root logins |\n"
+        "| Secrets Hygiene | 🔴 Poor | 7 expired, 31 orphaned |\n\n"
+        "## Prioritised Remediation Roadmap\n\n"
+        "**Immediate (today):**\n"
+        "- Enable MFA on AWS root account\n"
+        "- Remove public access from `payments-archive` S3 bucket\n"
+        "- Restrict SSH security group to VPN CIDR\n"
+        "- Disable root IAM access key\n\n"
+        "**This week:**\n"
+        "- Disable public access on `db-prod-mysql` RDS instance\n"
+        "- Add auth to `payments-webhook` Lambda or make it private\n"
+        "- Rotate 7 expired Vault secrets and apply rotation policies\n"
+        "- Investigate terraform@acme.com API call spike\n\n"
+    ):
+        yield ev
+
+    yield {"type": "done", "turns": 2}
+
+
+async def _run_demo(
+    query: str,
+    *,
+    history: list[dict] | None = None,
+    pool: Any | None = None,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """
+    Demo mode dispatcher — zero credentials, fully offline.
+    Picks a pre-recorded scenario based on query keywords.
+
+    Set AI_PROVIDER=demo (no AI_API_KEY needed) to use this mode.
+    """
+    import re as _re
+    q = query.lower()
+
+    if _re.search(r'cve-\d{4}|dependabot|semgrep|snyk\b|reachab|vuln(?:nerabilit)?', q):
+        async for ev in _demo_vuln_triage(query):
+            yield ev
+    elif _re.search(r'incident|breach|compromis|suspicious login|alert sec|intrus|attacker', q):
+        async for ev in _demo_incident(query):
+            yield ev
+    elif _re.search(r'threat.hunt|hunting playbook|sigma.rule|escu|t\d{4}\b|lateral.mov', q):
+        async for ev in _demo_threat_hunt(query):
+            yield ev
+    elif _re.search(r'compliance|audit playbook|drata|vanta|soc.?2|iso.?27001|pci', q):
+        async for ev in _demo_compliance(query):
+            yield ev
+    elif _re.search(r'secret.leak|vault.radar|token.expos|credential.leak|leak response', q):
+        async for ev in _demo_secret_leak(query):
+            yield ev
+    elif _re.search(r'cloud.posture|prowler|cloudflare|cloud.audit|posture.review', q):
+        async for ev in _demo_cloud_posture(query):
+            yield ev
+    else:
+        async for ev in _demo_default(query):
+            yield ev
 
 
 # ─────────────────────────────────────────────────────────────────────────────

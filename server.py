@@ -25,6 +25,7 @@ Production (Docker):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -59,6 +60,51 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _pool: MCPClientPool | None = None
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Session history store — persists across WebSocket reconnects
+# ─────────────────────────────────────────────────────────────────────────────
+
+_session_store: dict[str, list[dict]] = {}
+_sessions_dir  = Path(__file__).parent / "sessions"
+
+
+def _load_session(session_id: str) -> list[dict]:
+    """Return history for session_id, loading from disk if available."""
+    if session_id in _session_store:
+        return _session_store[session_id]
+    path = _sessions_dir / f"{session_id}.json"
+    if path.exists():
+        try:
+            data = json.loads(path.read_text())
+            if isinstance(data, list):
+                _session_store[session_id] = data
+                return data
+        except Exception:
+            pass
+    history: list[dict] = []
+    _session_store[session_id] = history
+    return history
+
+
+def _save_session(session_id: str, history: list[dict]) -> None:
+    """Persist session history to disk (best-effort)."""
+    try:
+        _sessions_dir.mkdir(exist_ok=True)
+        path = _sessions_dir / f"{session_id}.json"
+        path.write_text(json.dumps(history))
+    except Exception:
+        pass
+
+
+def _delete_session(session_id: str) -> None:
+    """Remove session from memory and disk."""
+    _session_store.pop(session_id, None)
+    path = _sessions_dir / f"{session_id}.json"
+    try:
+        path.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 @asynccontextmanager
@@ -186,6 +232,13 @@ async def health_llm() -> dict[str, Any]:
         "status":   "error",
     }
 
+    if cfg.provider == "demo":
+        result["status"]      = "ok"
+        result["model"]       = "demo"
+        result["latency_ms"]  = 0
+        result["response"]    = "demo mode — no API call needed"
+        return result
+
     if cfg.provider == "anthropic" and not cfg.api_key:
         result["error"] = "AI_API_KEY is not set — add it to your .env file"
         return result
@@ -256,7 +309,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
     Returns a Server-Sent Events stream of JSON event objects.
     Each line: ``data: {"type": "text"|"tool_call"|"tool_result"|"done"|"error", ...}``
     """
-    if not cfg.api_key:
+    if not cfg.api_key and cfg.provider != "demo":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="AI_API_KEY not configured")
     return StreamingResponse(
@@ -277,7 +330,7 @@ async def run_playbook(req: PlaybookRequest) -> StreamingResponse:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=f"Unknown playbook '{req.playbook}'. "
                                    f"Valid: {list(PLAYBOOK_PROMPTS.keys())}")
-    if not cfg.api_key:
+    if not cfg.api_key and cfg.provider != "demo":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="AI_API_KEY not configured")
     prompt = PLAYBOOK_PROMPTS[req.playbook].format(target=req.target)
@@ -298,7 +351,7 @@ async def generate_report(req: ReportRequest) -> dict[str, Any]:
     if req.playbook not in PLAYBOOK_PROMPTS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail=f"Unknown playbook '{req.playbook}'")
-    if not cfg.api_key:
+    if not cfg.api_key and cfg.provider != "demo":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="AI_API_KEY not configured")
 
@@ -355,8 +408,8 @@ async def ws_session(websocket: WebSocket, session_id: str) -> None:
                      ``{"type": "done", "turns": N}``
     """
     await websocket.accept()
-    history: list[dict] = []
-    logger.info("WebSocket session started: %s", session_id)
+    history = _load_session(session_id)
+    logger.info("WebSocket session started: %s (history: %d msgs)", session_id, len(history))
 
     try:
         while True:
@@ -380,14 +433,30 @@ async def ws_session(websocket: WebSocket, session_id: str) -> None:
             ):
                 await websocket.send_text(json.dumps(event))
 
+            # Persist after each completed turn
+            _save_session(session_id, history)
+
     except WebSocketDisconnect:
-        logger.info("WebSocket session ended: %s", session_id)
+        _save_session(session_id, history)
+        logger.info("WebSocket session ended: %s (history: %d msgs)", session_id, len(history))
     except Exception as exc:
+        _save_session(session_id, history)
         logger.exception("WebSocket error in session %s: %s", session_id, exc)
         try:
             await websocket.send_text(json.dumps({"type": "error", "message": str(exc)}))
         except Exception:
             pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Session management
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.delete("/sessions/{session_id}", tags=["sessions"])
+async def delete_session(session_id: str):
+    """Clear conversation history for a session (used by 'Clear History' in UI)."""
+    _delete_session(session_id)
+    return {"status": "cleared", "session_id": session_id}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -404,7 +473,7 @@ async def siem_webhook(payload: SIEMWebhookPayload) -> StreamingResponse:
 
     Returns a Server-Sent Events stream of investigation events.
     """
-    if not cfg.api_key:
+    if not cfg.api_key and cfg.provider != "demo":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="AI_API_KEY not configured")
 

@@ -1,6 +1,16 @@
 # Playbook 02: Incident Response
 
-> SOC L2/L3 workflow for investigating and responding to security incidents using AI-orchestrated MCP tools.
+> SOC L2/L3 workflow for investigating and responding to security incidents using SOCPilot's AI-orchestrated MCP tools.
+
+## How to Invoke
+
+| Method | Command |
+|---|---|
+| Browser UI | Sidebar → **Incident Response** → enter alert ID or description |
+| CLI | `python agent.py --playbook incident-response "alert SEC-7721"` |
+| API | `POST /playbook` with `{"playbook": "incident-response", "target": "..."}` |
+| SIEM webhook | `POST /webhook/siem` — auto-triggers this playbook from any SIEM alert |
+| Demo | Works in demo mode — shows realistic 6-tool-call scenario |
 
 ## MCP Servers Required
 

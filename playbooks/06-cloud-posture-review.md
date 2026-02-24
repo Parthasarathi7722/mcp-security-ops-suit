@@ -1,6 +1,15 @@
 # Playbook 06: Cloud Security Posture Review
 
-> Periodic cloud security assessment using AI to correlate findings from infrastructure scanning, WAF events, and compliance frameworks.
+> Periodic cloud security assessment using SOCPilot to correlate findings from infrastructure scanning, WAF events, SIEM cloud logs, and secrets hygiene — with a prioritised remediation roadmap.
+
+## How to Invoke
+
+| Method | Command |
+|---|---|
+| Browser UI | Sidebar → **Cloud Posture** → enter cloud environment (e.g. "AWS prod") |
+| CLI | `python agent.py --playbook cloud-posture-review "AWS prod account"` |
+| API | `POST /playbook` with `{"playbook": "cloud-posture-review", "target": "..."}` |
+| Demo | Works in demo mode — shows realistic 4-tool-call scenario (Prowler + Cloudflare + Sentinel + Vault) |
 
 ## MCP Servers Required
 

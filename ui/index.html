@@ -835,6 +835,7 @@ function newChat() {
 }
 
 function clearHistory() {
+  fetch(`/sessions/${sessionId}`, { method: 'DELETE' }).catch(() => {});
   qs('#messages').innerHTML = '';
   const welcome = buildWelcomeScreen();
   qs('#messages').appendChild(welcome);
@@ -1743,7 +1744,19 @@ async function loadHealthStatus() {
     const model    = data.model    || '';
     qs('#mode-text').textContent   = `${provider} · ${mode}`;
     qs('#footer-mode').textContent = mode;
-    if (mode === 'live') {
+    if (provider === 'demo') {
+      qs('#mode-badge').style.background = '#2e1065';
+      qs('#mode-badge').style.color      = '#c084fc';
+      qs('#mode-dot').style.background   = '#a855f7';
+      qs('#mode-badge').title = 'Demo mode — pre-recorded responses, no API key required';
+      qs('#footer-mode').style.color = '#a855f7';
+      const footerP = qs('#footer-mode').closest('p');
+      if (footerP) footerP.innerHTML =
+        'Running in <span style="color:#a855f7;">demo</span> mode — ' +
+        'pre-recorded responses, zero credentials. ' +
+        'Set <code style="font-family:monospace;color:#6b7280;">AI_PROVIDER=anthropic</code> ' +
+        'and <code style="font-family:monospace;color:#6b7280;">AI_API_KEY</code> for live AI.';
+    } else if (mode === 'live') {
       qs('#mode-badge').style.background = '#1e3a5f';
       qs('#mode-badge').style.color      = '#60a5fa';
       qs('#mode-dot').style.background   = '#3b82f6';

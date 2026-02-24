@@ -1,6 +1,15 @@
 # Playbook 04: Compliance Audit
 
-> GRC workflow for running compliance checks across cloud, code, and platform controls using AI-orchestrated MCP tools.
+> GRC workflow for running compliance checks across cloud, code, and platform controls using SOCPilot's AI-orchestrated MCP tools.
+
+## How to Invoke
+
+| Method | Command |
+|---|---|
+| Browser UI | Sidebar → **Compliance Audit** → enter environment or framework (e.g. "AWS prod SOC 2") |
+| CLI | `python agent.py --playbook compliance-audit "AWS prod SOC 2 readiness"` |
+| API | `POST /playbook` with `{"playbook": "compliance-audit", "target": "..."}` |
+| Demo | Works in demo mode — shows realistic 4-tool-call scenario (Drata + Prowler + GHAS + Vault Radar) |
 
 ## MCP Servers Required
 

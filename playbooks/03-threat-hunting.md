@@ -1,6 +1,15 @@
 # Playbook 03: Threat Hunting
 
-> Proactive threat hunting workflow using AI to translate TTPs into queries, run hunts, and enrich findings.
+> Proactive threat hunting workflow using SOCPilot to translate TTPs into SIEM queries, run hunts across Sentinel and Splunk, and enrich findings with threat intelligence.
+
+## How to Invoke
+
+| Method | Command |
+|---|---|
+| Browser UI | Sidebar → **Threat Hunting** → enter TTP, threat actor, or technique |
+| CLI | `python agent.py --playbook threat-hunting "Cl0p ransomware TTPs"` |
+| API | `POST /playbook` with `{"playbook": "threat-hunting", "target": "..."}` |
+| Demo | Works in demo mode — shows realistic 4-tool-call scenario (Detections + Sentinel + Splunk + OpenCTI) |
 
 ## MCP Servers Required
 
